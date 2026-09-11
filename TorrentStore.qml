@@ -138,9 +138,35 @@ QtObject {
             if (left > right) return direction
             return (Number(a.id) - Number(b.id)) * direction
         })
-        visibleModel.clear()
-        for (i = 0; i < filtered.length; ++i)
-            visibleModel.append(filtered[i])
+        reconcileVisibleModel(filtered)
+    }
+
+    // Keep existing ListModel rows alive across polling refreshes. Rebuilding the
+    // model with clear()/append() briefly makes the ListView's content empty and
+    // causes Qt to clamp contentY, which shows up as a jump when wheel scrolling
+    // ends. Match rows by the daemon-stable torrent hash, move them when sorting
+    // changed, and update their values in place.
+    function reconcileVisibleModel(filtered) {
+        for (var i = 0; i < filtered.length; ++i) {
+            var hash = String(filtered[i].hash_string)
+            var existingIndex = -1
+            for (var j = i; j < visibleModel.count; ++j) {
+                if (String(visibleModel.get(j).hash_string) === hash) {
+                    existingIndex = j
+                    break
+                }
+            }
+
+            if (existingIndex < 0)
+                visibleModel.insert(i, filtered[i])
+            else if (existingIndex !== i)
+                visibleModel.move(existingIndex, i, 1)
+
+            visibleModel.set(i, filtered[i])
+        }
+
+        if (visibleModel.count > filtered.length)
+            visibleModel.remove(filtered.length, visibleModel.count - filtered.length)
     }
 
     function torrentById(id) {

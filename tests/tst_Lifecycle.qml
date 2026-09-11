@@ -8,6 +8,8 @@ TestCase {
     TransmissionClient { id: client }
     TorrentStore { id: store; client: client }
     TorrentFilesStore { id: files; client: client; draftMode: true }
+    SignalSpy { id: rowsInsertedSpy; target: store.model; signalName: "rowsInserted" }
+    SignalSpy { id: rowsRemovedSpy; target: store.model; signalName: "rowsRemoved" }
 
     function init() {
         client.disconnectFromServer()
@@ -15,6 +17,8 @@ TestCase {
         store.items = []
         store.refreshInFlight = false
         files.torrentHash = ""
+        rowsInsertedSpy.clear()
+        rowsRemovedSpy.clear()
     }
 
     function test_invalidationReleasesRefresh() {
@@ -29,6 +33,48 @@ TestCase {
         store.activateProfile("two", false)
         compare(store.items.length, 0)
         compare(store.torrentByHash("old"), null)
+    }
+
+    function test_visibleRowsAreReconciledAcrossRefreshes() {
+        store.items = [
+            { id: 1, hash_string: "one", name: "Old name", added_date: 2 },
+            { id: 2, hash_string: "two", name: "Two", added_date: 1 }
+        ]
+        store.rebuildVisibleModel()
+        compare(store.model.count, 2)
+        rowsInsertedSpy.clear()
+        rowsRemovedSpy.clear()
+
+        store.items = [
+            { id: 1, hash_string: "one", name: "New name", added_date: 2 },
+            { id: 2, hash_string: "two", name: "Two", added_date: 1 }
+        ]
+        store.rebuildVisibleModel()
+
+        compare(store.model.count, 2)
+        compare(store.model.get(0).hash_string, "one")
+        compare(store.model.get(0).name, "New name")
+        compare(store.model.get(1).hash_string, "two")
+        compare(rowsInsertedSpy.count, 0)
+        compare(rowsRemovedSpy.count, 0)
+    }
+
+    function test_visibleRowsHandleInsertRemoveAndReorder() {
+        store.items = [
+            { id: 1, hash_string: "one", name: "One", added_date: 2 },
+            { id: 2, hash_string: "two", name: "Two", added_date: 1 }
+        ]
+        store.rebuildVisibleModel()
+
+        store.items = [
+            { id: 2, hash_string: "two", name: "Two", added_date: 3 },
+            { id: 3, hash_string: "three", name: "Three", added_date: 2 }
+        ]
+        store.rebuildVisibleModel()
+
+        compare(store.model.count, 2)
+        compare(store.model.get(0).hash_string, "two")
+        compare(store.model.get(1).hash_string, "three")
     }
 
     function test_draftArgumentsUseDaemonIndices() {
