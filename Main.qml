@@ -114,21 +114,23 @@ ApplicationWindow {
     header: ToolBar {
         RowLayout {
             anchors.fill: parent
-            ToolButton { text: "Add"; icon.source: "icons/add.svg"; enabled: client.connected; onClicked: addDialog.open() }
+            ToolButton { text: "Add"; icon.name: "list-add"; icon.source: "icons/add.svg"; enabled: client.connected; onClicked: addDialog.open() }
             ToolSeparator {}
             ToolButton {
                 text: "Start"
+                icon.name: "media-playback-start"
                 icon.source: "icons/start.svg"
                 enabled: client.connected && window.selectedTorrent && window.selectedTorrent.status === 0
                 onClicked: store.start(window.selectedHash)
             }
             ToolButton {
                 text: "Stop"
+                icon.name: "media-playback-stop"
                 icon.source: "icons/stop.svg"
                 enabled: client.connected && window.selectedTorrent && window.selectedTorrent.status !== 0
                 onClicked: store.stop(window.selectedHash)
             }
-            ToolButton { text: "Remove"; icon.source: "icons/remove.svg"; enabled: client.connected && window.selectedTorrent; onClicked: removeDialog.open() }
+            ToolButton { text: "Remove"; icon.name: "edit-delete"; icon.source: "icons/remove.svg"; enabled: client.connected && window.selectedTorrent; onClicked: removeDialog.open() }
             Item { Layout.fillWidth: true }
             ComboBox {
                 id: profileSelector
@@ -139,9 +141,10 @@ ApplicationWindow {
                 enabled: !addController.active
                 onActivated: function(index) { window.selectAndConnect(profiles.profiles[index].id) }
             }
-            ToolButton { text: "Profiles"; icon.source: "icons/profiles.svg"; onClicked: connectionDialog.open() }
+            ToolButton { text: "Profiles"; icon.name: "preferences-system-network"; icon.source: "icons/profiles.svg"; onClicked: connectionDialog.open() }
             ToolButton {
                 text: client.connected || client.connecting ? "Disconnect" : "Connection"
+                icon.name: client.connected || client.connecting ? "network-disconnect" : "network-connect"
                 icon.source: client.connected || client.connecting ? "icons/disconnect.svg" : "icons/connect.svg"
                 onClicked: client.connected || client.connecting ? client.disconnectFromServer() : window.selectAndConnect(profiles.activeProfileId)
             }
