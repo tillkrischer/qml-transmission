@@ -59,8 +59,8 @@ Item {
                     }
                     Item { visible: !row.modelData.folder; Layout.preferredWidth: row.modelData.depth * 16 + 36 }
                     Label { text: row.modelData.name; elide: Text.ElideMiddle; Layout.fillWidth: true; font.bold: row.modelData.folder }
-                    ProgressBar {
-                        Layout.preferredWidth: 100; from: 0; to: 1
+                    TorrentProgressBar {
+                        Layout.preferredWidth: 100
                         value: row.modelData.size ? row.modelData.completed / row.modelData.size : 0
                     }
                     Label { text: Format.bytes(row.modelData.size); horizontalAlignment: Text.AlignRight; Layout.preferredWidth: 80 }

@@ -51,15 +51,15 @@ Item {
                 spacing: root.columnSpacing
                 Repeater {
                     model: [
-                        { title: "Name", role: "name", width: root.nameColumnWidth, alignment: Text.AlignLeft },
-                        { title: "Size", role: "total_size", width: 82, alignment: Text.AlignRight },
-                        { title: "Progress", role: "percent_complete", width: 92, alignment: Text.AlignLeft },
-                        { title: "Status", role: "status", width: 135, alignment: Text.AlignLeft },
-                        { title: "Down", role: "rate_download", width: 84, alignment: Text.AlignRight },
-                        { title: "Up", role: "rate_upload", width: 84, alignment: Text.AlignRight },
-                        { title: "Ratio", role: "upload_ratio", width: 62, alignment: Text.AlignRight },
-                        { title: "ETA", role: "eta", width: 70, alignment: Text.AlignRight },
-                        { title: "Added on", role: "added_date", width: 150, alignment: Text.AlignLeft }
+                        { title: "Name", role: "name", width: root.nameColumnWidth },
+                        { title: "Size", role: "total_size", width: 82 },
+                        { title: "Progress", role: "percent_complete", width: 92 },
+                        { title: "Status", role: "status", width: 135 },
+                        { title: "Down", role: "rate_download", width: 84 },
+                        { title: "Up", role: "rate_upload", width: 84 },
+                        { title: "Ratio", role: "upload_ratio", width: 62 },
+                        { title: "ETA", role: "eta", width: 70 },
+                        { title: "Added on", role: "added_date", width: 150 }
                     ]
                     Button {
                         required property var modelData
@@ -72,7 +72,7 @@ Item {
                         Layout.maximumWidth: modelData.width
                         contentItem: Label {
                             text: parent.text
-                            horizontalAlignment: parent.modelData.alignment
+                            horizontalAlignment: Text.AlignLeft
                             verticalAlignment: Text.AlignVCenter
                             elide: Text.ElideRight
                         }
@@ -130,11 +130,9 @@ Item {
                     Item {
                         width: 92
                         height: parent.height
-                        ProgressBar {
+                        TorrentProgressBar {
                             anchors.verticalCenter: parent.verticalCenter
                             width: parent.width
-                            from: 0
-                            to: 1
                             value: row.percent_complete
                             ToolTip.text: Math.round(row.percent_complete * 100) + "%"
                             ToolTip.visible: hovered

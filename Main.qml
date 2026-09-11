@@ -265,10 +265,11 @@ ApplicationWindow {
         id: removeDialog
         title: "Remove torrent?"
         modal: true
+        width: 500
         standardButtons: Dialog.Yes | Dialog.No
         anchors.centerIn: Overlay.overlay
         Label {
-            width: 420
+            width: removeDialog.availableWidth
             wrapMode: Text.WordWrap
             text: "Remove “" + (window.selectedTorrent ? window.selectedTorrent.name : "") + "” from Transmission? Downloaded files will be preserved."
         }

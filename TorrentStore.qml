@@ -7,8 +7,8 @@ QtObject {
     property alias model: visibleModel
     property string searchText: ""
     property string statusFilter: "all"
-    property string sortRole: "name"
-    property bool sortAscending: true
+    property string sortRole: "added_date"
+    property bool sortAscending: false
     property bool refreshInFlight: false
     property bool stale: !client.connected
     property string errorMessage: ""

@@ -265,7 +265,7 @@ QtObject {
             if (sessionId)
                 xhr.setRequestHeader("X-Transmission-Session-Id", sessionId)
             if (username)
-                xhr.setRequestHeader("Authorization", "Basic " + Qt.btoa(username + ":" + password))
+                xhr.setRequestHeader("Authorization", "Basic " + Rpc.base64Utf8(username + ":" + password))
             xhr.send(JSON.stringify(envelope))
         } catch (error) {
             delete pending[key]

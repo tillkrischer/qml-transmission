@@ -49,3 +49,29 @@ function isSupportedVersion(semver) {
     return majorVersion(semver) >= 6
 }
 
+function base64Utf8(value) {
+    var encoded = encodeURIComponent(String(value))
+    var bytes = []
+    for (var i = 0; i < encoded.length; ++i) {
+        if (encoded[i] === "%") {
+            bytes.push(parseInt(encoded.slice(i + 1, i + 3), 16))
+            i += 2
+        } else {
+            bytes.push(encoded.charCodeAt(i))
+        }
+    }
+
+    var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    var result = ""
+    for (var offset = 0; offset < bytes.length; offset += 3) {
+        var first = bytes[offset]
+        var second = offset + 1 < bytes.length ? bytes[offset + 1] : 0
+        var third = offset + 2 < bytes.length ? bytes[offset + 2] : 0
+        var bits = (first << 16) | (second << 8) | third
+        result += alphabet[(bits >> 18) & 63]
+        result += alphabet[(bits >> 12) & 63]
+        result += offset + 1 < bytes.length ? alphabet[(bits >> 6) & 63] : "="
+        result += offset + 2 < bytes.length ? alphabet[bits & 63] : "="
+    }
+    return result
+}

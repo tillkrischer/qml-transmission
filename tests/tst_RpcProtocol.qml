@@ -45,4 +45,10 @@ TestCase {
         verify(!Rpc.isSupportedVersion("5.3.0"))
         verify(!Rpc.isSupportedVersion("unknown"))
     }
+
+    function test_base64Utf8() {
+        compare(Rpc.base64Utf8("user:password"), "dXNlcjpwYXNzd29yZA==")
+        compare(Rpc.base64Utf8("Jörg:🔑"), "SsO2cmc68J+UkQ==")
+        compare(Rpc.base64Utf8(""), "")
+    }
 }
