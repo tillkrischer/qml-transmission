@@ -10,6 +10,10 @@ Item {
     required property TorrentStore store
     property string selectedHash: ""
     readonly property int tableWidth: 1120
+    readonly property int tablePadding: 8
+    readonly property int columnSpacing: 8
+    readonly property int nameColumnWidth: tableWidth - (2 * tablePadding) - (8 * columnSpacing)
+                                                   - 82 - 92 - 135 - 84 - 84 - 62 - 70 - 150
     signal selectionChanged(string torrentHash)
 
     function select(hash) {
@@ -42,27 +46,36 @@ Item {
             color: palette.alternateBase
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 8
-                anchors.rightMargin: 8
-                spacing: 8
+                anchors.leftMargin: root.tablePadding
+                anchors.rightMargin: root.tablePadding
+                spacing: root.columnSpacing
                 Repeater {
                     model: [
-                        { title: "Name", role: "name", width: 260 },
-                        { title: "Size", role: "total_size", width: 82 },
-                        { title: "Progress", role: "percent_complete", width: 92 },
-                        { title: "Status", role: "status", width: 135 },
-                        { title: "Down", role: "rate_download", width: 84 },
-                        { title: "Up", role: "rate_upload", width: 84 },
-                        { title: "Ratio", role: "upload_ratio", width: 62 },
-                        { title: "ETA", role: "eta", width: 70 },
-                        { title: "Added on", role: "added_date", width: 150 }
+                        { title: "Name", role: "name", width: root.nameColumnWidth, alignment: Text.AlignLeft },
+                        { title: "Size", role: "total_size", width: 82, alignment: Text.AlignRight },
+                        { title: "Progress", role: "percent_complete", width: 92, alignment: Text.AlignLeft },
+                        { title: "Status", role: "status", width: 135, alignment: Text.AlignLeft },
+                        { title: "Down", role: "rate_download", width: 84, alignment: Text.AlignRight },
+                        { title: "Up", role: "rate_upload", width: 84, alignment: Text.AlignRight },
+                        { title: "Ratio", role: "upload_ratio", width: 62, alignment: Text.AlignRight },
+                        { title: "ETA", role: "eta", width: 70, alignment: Text.AlignRight },
+                        { title: "Added on", role: "added_date", width: 150, alignment: Text.AlignLeft }
                     ]
                     Button {
                         required property var modelData
                         text: modelData.title + (root.store.sortRole === modelData.role ? (root.store.sortAscending ? "  ▲" : "  ▼") : "")
                         flat: true
-                        Layout.fillWidth: modelData.role === "name"
+                        leftPadding: 0
+                        rightPadding: 0
+                        Layout.minimumWidth: modelData.width
                         Layout.preferredWidth: modelData.width
+                        Layout.maximumWidth: modelData.width
+                        contentItem: Label {
+                            text: parent.text
+                            horizontalAlignment: parent.modelData.alignment
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
                         onClicked: {
                             if (root.store.sortRole === modelData.role)
                                 root.store.sortAscending = !root.store.sortAscending
@@ -103,24 +116,40 @@ Item {
                 required property string error_string
                 width: list.width
                 height: 34
+                leftPadding: root.tablePadding
+                rightPadding: root.tablePadding
+                topPadding: 0
+                bottomPadding: 0
                 highlighted: root.selectedHash === hash_string
                 onClicked: root.select(hash_string)
 
-                contentItem: RowLayout {
-                    spacing: 8
-                    Label { text: row.name; elide: Text.ElideRight; Layout.fillWidth: true; Layout.minimumWidth: 180 }
-                    Label { text: Format.bytes(row.total_size); horizontalAlignment: Text.AlignRight; Layout.preferredWidth: 82 }
-                    ProgressBar { from: 0; to: 1; value: row.percent_complete; Layout.preferredWidth: 92; ToolTip.text: Math.round(row.percent_complete * 100) + "%"; ToolTip.visible: hovered }
+                contentItem: Row {
+                    spacing: root.columnSpacing
+                    Label { width: root.nameColumnWidth; height: parent.height; text: row.name; elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter }
+                    Label { width: 82; height: parent.height; text: Format.bytes(row.total_size); horizontalAlignment: Text.AlignRight; verticalAlignment: Text.AlignVCenter }
+                    Item {
+                        width: 92
+                        height: parent.height
+                        ProgressBar {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width
+                            from: 0
+                            to: 1
+                            value: row.percent_complete
+                            ToolTip.text: Math.round(row.percent_complete * 100) + "%"
+                            ToolTip.visible: hovered
+                        }
+                    }
                     RowLayout {
-                        spacing: 6; Layout.preferredWidth: 135
+                        width: 135; height: parent.height; spacing: 6
                         StatusIcon { status: row.status; error: row.error; errorText: row.error_string || (row.error ? "Torrent error" : "") }
                         Label { text: Format.status(row.status); elide: Text.ElideRight; Layout.fillWidth: true }
                     }
-                    Label { text: Format.speed(row.rate_download); horizontalAlignment: Text.AlignRight; Layout.preferredWidth: 84 }
-                    Label { text: Format.speed(row.rate_upload); horizontalAlignment: Text.AlignRight; Layout.preferredWidth: 84 }
-                    Label { text: Format.ratio(row.upload_ratio); horizontalAlignment: Text.AlignRight; Layout.preferredWidth: 62 }
-                    Label { text: Format.duration(row.eta); horizontalAlignment: Text.AlignRight; Layout.preferredWidth: 70 }
-                    Label { text: Format.dateTime(row.added_date); Layout.preferredWidth: 150 }
+                    Label { width: 84; height: parent.height; text: Format.speed(row.rate_download); horizontalAlignment: Text.AlignRight; verticalAlignment: Text.AlignVCenter }
+                    Label { width: 84; height: parent.height; text: Format.speed(row.rate_upload); horizontalAlignment: Text.AlignRight; verticalAlignment: Text.AlignVCenter }
+                    Label { width: 62; height: parent.height; text: Format.ratio(row.upload_ratio); horizontalAlignment: Text.AlignRight; verticalAlignment: Text.AlignVCenter }
+                    Label { width: 70; height: parent.height; text: Format.duration(row.eta); horizontalAlignment: Text.AlignRight; verticalAlignment: Text.AlignVCenter }
+                    Label { width: 150; height: parent.height; text: Format.dateTime(row.added_date); verticalAlignment: Text.AlignVCenter }
                 }
             }
         }
