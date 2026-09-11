@@ -9,6 +9,7 @@ QtObject {
     property string endpoint: "http://localhost:9091/transmission/rpc"
     property string username: ""
     property string password: ""
+    property string profileId: ""
     property bool connected: false
     property bool connecting: false
     property bool desiredConnected: false
@@ -21,9 +22,11 @@ QtObject {
     property int generation: 0
     property int reconnectAttempt: 0
     property var pending: ({})
+    property string defaultDownloadDirectory: ""
 
     signal becameConnected()
     signal becameDisconnected()
+    signal invalidated(int generation)
 
     property Timer deadlineTimer: Timer {
         interval: 250
@@ -37,25 +40,48 @@ QtObject {
         onTriggered: root.openSession()
     }
 
-    function configure(url, user, secret) {
+    function configure(url, user, secret, newProfileId) {
         var normalized = String(url || "").trim()
         if (normalized && !/^https?:\/\//i.test(normalized))
             normalized = "http://" + normalized
         var changed = endpoint !== normalized || username !== user || password !== secret
-        var reconnect = changed && desiredConnected
+                || (newProfileId !== undefined && profileId !== newProfileId)
         if (changed) {
-            reconnectTimer.stop()
-            ++generation
-            abortPending()
-            connected = false
-            connecting = false
-            sessionId = ""
+            invalidate()
         }
         endpoint = normalized
         username = user || ""
         password = secret || ""
-        if (reconnect)
-            openSession()
+        if (newProfileId !== undefined)
+            profileId = newProfileId
+    }
+
+    function invalidate() {
+        reconnectTimer.stop()
+        ++generation
+        abortPending()
+        connected = false
+        connecting = false
+        sessionId = ""
+        invalidated(generation)
+    }
+
+    function activateProfile(newProfileId, url, user, secret, connectNow) {
+        desiredConnected = false
+        invalidate()
+        endpoint = normalizedEndpoint(url)
+        username = user || ""
+        password = secret || ""
+        profileId = newProfileId || ""
+        if (connectNow)
+            connectToServer()
+    }
+
+    function normalizedEndpoint(url) {
+        var normalized = String(url || "").trim()
+        if (normalized && !/^https?:\/\//i.test(normalized))
+            normalized = "http://" + normalized
+        return normalized
     }
 
     function connectToServer() {
@@ -68,10 +94,7 @@ QtObject {
     function disconnectFromServer() {
         desiredConnected = false
         reconnectTimer.stop()
-        ++generation
-        abortPending()
-        connecting = false
-        connected = false
+        invalidate()
         connectionState = "Disconnected"
         sessionId = ""
         becameDisconnected()
@@ -82,7 +105,7 @@ QtObject {
             return
         connecting = true
         connectionState = reconnectAttempt ? "Reconnecting…" : "Connecting…"
-        request("session_get", { fields: ["version", "rpc_version_semver"] }, false,
+        request("session_get", { fields: ["version", "rpc_version_semver", "download_dir"] }, false,
                 function(result, error) {
             connecting = false
             if (!desiredConnected)
@@ -102,6 +125,7 @@ QtObject {
             }
             serverVersion = result.version || "Transmission"
             rpcVersion = version
+            defaultDownloadDirectory = result.download_dir || ""
             reconnectAttempt = 0
             connected = true
             connectionState = "Connected to " + serverVersion
@@ -148,6 +172,31 @@ QtObject {
         }
         var envelope = Rpc.createRequest(method, params)
         send(envelope, mutation, callback, 0, generation)
+    }
+
+    function torrentFiles(hash, callback) {
+        if (!hash) {
+            callback(null, makeError("No torrent selected", "validation", false))
+            return
+        }
+        request("torrent_get", { ids: [hash], fields: ["id", "hash_string", "name",
+                    "files", "file_stats", "metadata_percent_complete"] }, false, callback)
+    }
+
+    function setTorrentFiles(hash, wanted, unwanted, priorities, callback) {
+        if (!hash) {
+            callback(null, makeError("No torrent selected", "validation", false))
+            return
+        }
+        var params = { ids: [hash] }
+        if (wanted && wanted.length) params.files_wanted = wanted
+        if (unwanted && unwanted.length) params.files_unwanted = unwanted
+        if (priorities) {
+            if (priorities.low && priorities.low.length) params.priority_low = priorities.low
+            if (priorities.normal && priorities.normal.length) params.priority_normal = priorities.normal
+            if (priorities.high && priorities.high.length) params.priority_high = priorities.high
+        }
+        request("torrent_set", params, true, callback)
     }
 
     function send(envelope, mutation, callback, sessionRetry, requestGeneration) {
@@ -264,22 +313,24 @@ QtObject {
         return { message: message, kind: kind, retryable: retryable }
     }
 
-    function addTorrent(link, directory, startImmediately, callback) {
-        var params = { filename: link, paused: !startImmediately }
+    function addTorrent(source, directory, paused, isMetainfo, callback) {
+        var params = { paused: paused }
+        if (isMetainfo) params.metainfo = source
+        else params.filename = source
         if (directory)
             params.download_dir = directory
         request("torrent_add", params, true, callback)
     }
 
-    function startTorrent(id, callback) {
-        request("torrent_start", { ids: [id] }, true, callback)
+    function startTorrent(hash, callback) {
+        request("torrent_start", { ids: [hash] }, true, callback)
     }
 
-    function stopTorrent(id, callback) {
-        request("torrent_stop", { ids: [id] }, true, callback)
+    function stopTorrent(hash, callback) {
+        request("torrent_stop", { ids: [hash] }, true, callback)
     }
 
-    function removeTorrent(id, callback) {
-        request("torrent_remove", { ids: [id], delete_local_data: false }, true, callback)
+    function removeTorrent(hash, callback) {
+        request("torrent_remove", { ids: [hash], delete_local_data: false }, true, callback)
     }
 }

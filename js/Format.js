@@ -40,3 +40,12 @@ function status(value) {
             "Downloading", "Queued to seed", "Seeding"][Number(value)] || "Unknown"
 }
 
+function dateTime(unixSeconds) {
+    var value = Number(unixSeconds)
+    if (!isFinite(value) || value <= 0)
+        return "—"
+    var date = new Date(value * 1000)
+    if (isNaN(date.getTime()))
+        return "—"
+    return Qt.formatDateTime(date, Qt.DefaultLocaleShortDate)
+}

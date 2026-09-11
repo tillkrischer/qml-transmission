@@ -17,16 +17,23 @@ ApplicationWindow {
     x: Number(settings.value("x", (Screen.width - width) / 2))
     y: Number(settings.value("y", (Screen.height - height) / 2))
 
-    property int selectedId: -1
-    property var selectedTorrent: store.torrentById(selectedId)
+    property string selectedHash: ""
+    property var selectedTorrent: store.torrentByHash(selectedHash)
     property string transientMessage: ""
+    property string pendingConnectProfileId: ""
 
     Component.onCompleted: {
-        Qt.application.name = "QML Transmission"
-        Qt.application.organization = "qml-transmission"
-        Qt.application.domain = "qml-transmission.local"
-        client.endpoint = settings.value("endpoint", "http://localhost:9091/transmission/rpc")
-        client.username = settings.value("username", "")
+        var profile = profiles.activeProfile
+        if (profile) {
+            client.configure(profile.endpoint, profile.username, profiles.passwordFor(profile.id), profile.id)
+            store.activateProfile(profile.id, false)
+        }
+    }
+    onClosing: function(close) {
+        if (addController.active) {
+            close.accepted = false
+            closeDraftDialog.open()
+        }
     }
     Component.onDestruction: {
         settings.setValue("width", width)
@@ -43,37 +50,100 @@ ApplicationWindow {
     }
     TransmissionClient { id: client }
     TorrentStore { id: store; client: client }
+    ConnectionProfiles { id: profiles; credentialBackend: credentialStore }
+    TorrentFilesStore {
+        id: liveFiles
+        client: client
+        torrentHash: window.selectedHash
+        visible: detailTabs.currentIndex === 1
+    }
+    TorrentFilesStore { id: draftFiles; client: client; draftMode: true; visible: true }
+    AddTorrentController { id: addController; client: client; draftStore: draftFiles; profiles: profiles; fileReader: torrentFileReader }
 
     Connections {
         target: store
-        function onUpdated() { window.selectedTorrent = store.torrentById(window.selectedId) }
+        function onUpdated() { window.selectedTorrent = store.torrentByHash(window.selectedHash) }
         function onMutationFinished(message, success) {
             window.transientMessage = message
             messageTimer.restart()
         }
     }
+    Connections {
+        target: profiles
+        function onPasswordReady(profileId, password, error) {
+            if (window.pendingConnectProfileId !== profileId) return
+            window.pendingConnectProfileId = ""
+            var profile = profiles.profile(profileId)
+            if (!profile) return
+            window.activateProfile(profile, password, true)
+            if (error) {
+                window.transientMessage = "Saved password unavailable; enter it in connection settings"
+                connectionDialog.open()
+            }
+        }
+    }
+    Connections {
+        target: client
+        function onBecameConnected() {
+            if (addController.recoveryHash && addController.recoveryProfileId === client.profileId)
+                recoveryDialog.open()
+        }
+    }
     Timer { id: messageTimer; interval: 5000; onTriggered: window.transientMessage = "" }
+
+    function activateProfile(profile, password, connectNow) {
+        if (!profile) return
+        if (addController.active && client.profileId !== profile.id) {
+            transientMessage = "Finish or leave the paused draft before switching profiles"
+            return
+        }
+        selectedHash = ""
+        selectedTorrent = null
+        store.activateProfile(profile.id, false)
+        client.activateProfile(profile.id, profile.endpoint, profile.username, password || "", connectNow)
+    }
+
+    function selectAndConnect(profileId) {
+        var profile = profiles.profile(profileId)
+        if (!profile) return
+        profiles.select(profileId)
+        pendingConnectProfileId = profileId
+        profiles.requestPassword(profileId)
+    }
 
     header: ToolBar {
         RowLayout {
             anchors.fill: parent
-            ToolButton { text: "Add link"; enabled: client.connected; onClicked: addDialog.open() }
+            ToolButton { text: "Add"; icon.source: "icons/add.svg"; enabled: client.connected; onClicked: addDialog.open() }
             ToolSeparator {}
             ToolButton {
                 text: "Start"
+                icon.source: "icons/start.svg"
                 enabled: client.connected && window.selectedTorrent && window.selectedTorrent.status === 0
-                onClicked: store.start(window.selectedId)
+                onClicked: store.start(window.selectedHash)
             }
             ToolButton {
                 text: "Stop"
+                icon.source: "icons/stop.svg"
                 enabled: client.connected && window.selectedTorrent && window.selectedTorrent.status !== 0
-                onClicked: store.stop(window.selectedId)
+                onClicked: store.stop(window.selectedHash)
             }
-            ToolButton { text: "Remove"; enabled: client.connected && window.selectedTorrent; onClicked: removeDialog.open() }
+            ToolButton { text: "Remove"; icon.source: "icons/remove.svg"; enabled: client.connected && window.selectedTorrent; onClicked: removeDialog.open() }
             Item { Layout.fillWidth: true }
+            ComboBox {
+                id: profileSelector
+                Layout.preferredWidth: 180
+                model: profiles.profiles
+                textRole: "name"
+                currentIndex: Math.max(0, profiles.profiles.findIndex(function(p) { return p.id === profiles.activeProfileId }))
+                enabled: !addController.active
+                onActivated: function(index) { window.selectAndConnect(profiles.profiles[index].id) }
+            }
+            ToolButton { text: "Profiles"; icon.source: "icons/profiles.svg"; onClicked: connectionDialog.open() }
             ToolButton {
                 text: client.connected || client.connecting ? "Disconnect" : "Connection"
-                onClicked: client.connected || client.connecting ? client.disconnectFromServer() : connectionDialog.open()
+                icon.source: client.connected || client.connecting ? "icons/disconnect.svg" : "icons/connect.svg"
+                onClicked: client.connected || client.connecting ? client.disconnectFromServer() : window.selectAndConnect(profiles.activeProfileId)
             }
         }
     }
@@ -128,19 +198,33 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         store: store
-                        selectedId: window.selectedId
-                        onSelectionChanged: function(torrentId) {
-                            window.selectedId = torrentId
-                            window.selectedTorrent = store.torrentById(torrentId)
+                        selectedHash: window.selectedHash
+                        onSelectionChanged: function(torrentHash) {
+                            window.selectedHash = torrentHash
+                            window.selectedTorrent = store.torrentByHash(torrentHash)
                         }
                     }
                 }
             }
 
             Frame {
-                SplitView.preferredHeight: 190
+                SplitView.preferredHeight: 250
                 SplitView.minimumHeight: 110
-                TorrentDetails { anchors.fill: parent; torrent: window.selectedTorrent }
+                ColumnLayout {
+                    anchors.fill: parent; spacing: 0
+                    TabBar {
+                        id: detailTabs
+                        Layout.fillWidth: true
+                        TabButton { text: "General" }
+                        TabButton { text: "Files" }
+                    }
+                    StackLayout {
+                        Layout.fillWidth: true; Layout.fillHeight: true
+                        currentIndex: detailTabs.currentIndex
+                        TorrentDetails { torrent: window.selectedTorrent }
+                        TorrentFilesView { store: liveFiles }
+                    }
+                }
             }
         }
     }
@@ -153,7 +237,7 @@ ApplicationWindow {
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
-            Label { text: window.transientMessage || store.errorMessage || client.errorMessage; color: palette.brightText; elide: Text.ElideRight; Layout.maximumWidth: window.width * 0.45 }
+            Label { text: window.transientMessage || profiles.errorMessage || store.errorMessage || client.errorMessage; color: palette.brightText; elide: Text.ElideRight; Layout.maximumWidth: window.width * 0.45 }
             Label { text: "↓ " + Format.speed(store.downloadSpeed) + "   ↑ " + Format.speed(store.uploadSpeed) }
         }
     }
@@ -161,24 +245,18 @@ ApplicationWindow {
     ConnectionDialog {
         id: connectionDialog
         anchors.centerIn: Overlay.overlay
-        endpoint: client.endpoint
-        username: client.username
-        password: client.password
-        onConnectRequested: function(endpoint, username, password) {
-            settings.setValue("endpoint", endpoint)
-            settings.setValue("username", username)
-            settings.sync()
-            client.configure(endpoint, username, password)
-            client.connectToServer()
+        profiles: profiles
+        profileSwitchingAllowed: !addController.active
+        onConnectRequested: function(profileId, endpoint, username, password) {
+            var profile = profiles.profile(profileId)
+            window.activateProfile(profile, password, true)
         }
     }
     AddTorrentDialog {
         id: addDialog
         anchors.centerIn: Overlay.overlay
-        onAddRequested: function(link, directory, startImmediately) {
-            if (link)
-                store.add(link, directory, startImmediately)
-        }
+        controller: addController
+        profiles: profiles
     }
     Dialog {
         id: removeDialog
@@ -191,6 +269,36 @@ ApplicationWindow {
             wrapMode: Text.WordWrap
             text: "Remove “" + (window.selectedTorrent ? window.selectedTorrent.name : "") + "” from Transmission? Downloaded files will be preserved."
         }
-        onAccepted: store.remove(window.selectedId)
+        onAccepted: store.remove(window.selectedHash)
+    }
+    Dialog {
+        id: closeDraftDialog
+        title: "Paused draft in progress"
+        modal: true
+        standardButtons: Dialog.NoButton
+        anchors.centerIn: Overlay.overlay
+        ColumnLayout {
+            Label { text: "Remove the confirmed paused draft, or leave it on the server before closing?"; wrapMode: Text.WordWrap; Layout.preferredWidth: 460 }
+            RowLayout {
+                Button { text: "Keep working"; onClicked: closeDraftDialog.close() }
+                Button { text: "Leave paused && close"; onClicked: { addController.leavePaused(); closeDraftDialog.close(); window.close() } }
+                Button { text: "Remove draft"; enabled: !!addController.ownedHash && !addController.busy; onClicked: addController.cleanup() }
+            }
+        }
+    }
+    Dialog {
+        id: recoveryDialog
+        title: "Paused draft found"
+        modal: true
+        standardButtons: Dialog.NoButton
+        anchors.centerIn: Overlay.overlay
+        ColumnLayout {
+            Label { text: "A confirmed paused draft from an earlier session is on this server."; Layout.preferredWidth: 440; wrapMode: Text.WordWrap }
+            RowLayout {
+                Button { text: "Keep"; onClicked: { addController.clearRecovery(); recoveryDialog.close() } }
+                Button { text: "Resume"; onClicked: { addController.ownedHash = addController.recoveryHash; addController.loadFiles(); recoveryDialog.close(); addDialog.open() } }
+                Button { text: "Remove"; onClicked: { addController.ownedHash = addController.recoveryHash; addController.cleanup(); recoveryDialog.close() } }
+            }
+        }
     }
 }

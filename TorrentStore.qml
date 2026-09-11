@@ -15,6 +15,8 @@ QtObject {
     property real downloadSpeed: 0
     property real uploadSpeed: 0
     property var items: []
+    property int generation: 0
+    property string activeProfileId: ""
 
     signal updated()
     signal mutationFinished(string message, bool success)
@@ -36,6 +38,10 @@ QtObject {
         function onBecameConnected() { root.stale = false; root.refresh() }
         function onBecameDisconnected() { root.stale = true }
         function onConnectedChanged() { if (!root.client.connected) root.stale = true }
+        function onInvalidated(newGeneration) {
+            root.generation = newGeneration
+            root.refreshInFlight = false
+        }
     }
 
     onSearchTextChanged: rebuildVisibleModel()
@@ -47,12 +53,16 @@ QtObject {
         if (!client.connected || refreshInFlight)
             return
         refreshInFlight = true
+        var requestGeneration = generation
+        var requestProfile = activeProfileId
         var torrentDone = false
         var statsDone = false
         var failed = false
         var nextItems = null
         var nextStats = null
         function complete() {
+            if (requestGeneration !== generation || requestProfile !== activeProfileId)
+                return
             if (!torrentDone || !statsDone)
                 return
             refreshInFlight = false
@@ -70,6 +80,7 @@ QtObject {
             "id", "name", "hash_string", "download_dir", "total_size",
             "percent_complete", "status", "rate_download", "rate_upload",
             "upload_ratio", "eta", "downloaded_ever", "uploaded_ever", "error_string"
+            , "error", "added_date"
         ] }, false, function(result, error) {
             torrentDone = true
             if (error) {
@@ -114,6 +125,11 @@ QtObject {
         filtered.sort(function(a, b) {
             var left = a[role]
             var right = b[role]
+            if (role === "added_date") {
+                var leftMissing = !isFinite(Number(left)) || Number(left) <= 0
+                var rightMissing = !isFinite(Number(right)) || Number(right) <= 0
+                if (leftMissing !== rightMissing) return leftMissing ? 1 : -1
+            }
             if (typeof left === "string") {
                 left = left.toLowerCase()
                 right = String(right).toLowerCase()
@@ -134,10 +150,35 @@ QtObject {
         return null
     }
 
+    function torrentByHash(hash) {
+        for (var i = 0; i < items.length; ++i)
+            if (items[i].hash_string === hash)
+                return items[i]
+        return null
+    }
+
+    function activateProfile(profileId, preserveRows) {
+        ++generation
+        activeProfileId = profileId || ""
+        refreshInFlight = false
+        errorMessage = ""
+        if (!preserveRows) {
+            items = []
+            downloadSpeed = 0
+            uploadSpeed = 0
+            rebuildVisibleModel()
+            updated()
+        }
+    }
+
     function runMutation(label, operation) {
         if (!client.connected)
             return
+        var mutationGeneration = generation
+        var mutationProfile = activeProfileId
         operation(function(result, error) {
+            if (mutationGeneration !== generation || mutationProfile !== activeProfileId)
+                return
             if (error) {
                 errorMessage = error.message
                 mutationFinished(error.message, false)
@@ -153,7 +194,7 @@ QtObject {
 
     function add(link, directory, startImmediately) {
         runMutation("Torrent added", function(done) {
-            client.addTorrent(link, directory, startImmediately, function(result, error) {
+            client.addTorrent(link, directory, !startImmediately, false, function(result, error) {
                 if (!error && result.torrent_duplicate)
                     error = { message: "That torrent is already present", kind: "duplicate", retryable: false }
                 done(result, error)
@@ -161,7 +202,7 @@ QtObject {
         })
     }
 
-    function start(id) { runMutation("Torrent started", function(done) { client.startTorrent(id, done) }) }
-    function stop(id) { runMutation("Torrent stopped", function(done) { client.stopTorrent(id, done) }) }
-    function remove(id) { runMutation("Torrent removed (downloaded files preserved)", function(done) { client.removeTorrent(id, done) }) }
+    function start(hash) { runMutation("Torrent started", function(done) { client.startTorrent(hash, done) }) }
+    function stop(hash) { runMutation("Torrent stopped", function(done) { client.stopTorrent(hash, done) }) }
+    function remove(hash) { runMutation("Torrent removed (downloaded files preserved)", function(done) { client.removeTorrent(hash, done) }) }
 }

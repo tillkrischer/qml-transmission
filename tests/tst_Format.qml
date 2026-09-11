@@ -18,5 +18,10 @@ TestCase {
         compare(Format.status(4), "Downloading")
         compare(Format.status(6), "Seeding")
     }
+    function test_dateTime() {
+        compare(Format.dateTime(0), "—")
+        compare(Format.dateTime(-2), "—")
+        compare(Format.dateTime("bad"), "—")
+        verify(Format.dateTime(1704067200).length > 3)
+    }
 }
-

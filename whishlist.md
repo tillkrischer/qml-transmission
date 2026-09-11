@@ -1,0 +1,11 @@
+- persist credentials
+- multiple connections
+- status indicating colorful icons in the torrent list
+  - icons in the toolbar
+- "Added on" column
+- adding torrents via .torrent file
+- add torrents dialog:
+  - download location
+  - select which files to download
+- file tab in the bottom panel
+  - with prio controls
