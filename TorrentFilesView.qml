@@ -41,9 +41,12 @@ Item {
             delegate: ItemDelegate {
                 id: row
                 required property var modelData
-                width: list.width; height: 32
+                width: list.width
+                height: rowContent.implicitHeight + 4
+                padding: 0
                 enabled: !root.store.busy
                 contentItem: RowLayout {
+                    id: rowContent
                     spacing: 8
                     CheckBox {
                         Layout.preferredWidth: 64
