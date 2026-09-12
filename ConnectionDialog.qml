@@ -12,7 +12,7 @@ Dialog {
     required property ConnectionProfiles profiles
     property bool profileSwitchingAllowed: true
     property bool passwordEdited: false
-    signal connectRequested(string profileId, string endpoint, string username, string password)
+    signal profileSaved(string profileId, string password)
 
     onOpened: {
         passwordEdited = false
@@ -92,15 +92,10 @@ Dialog {
             Item { Layout.fillWidth: true }
             Button {
                 text: "Save"
-                onClicked: root.profiles.saveProfile(root.profiles.activeProfileId, nameField.text.trim(), urlField.text.trim(), userField.text, rememberBox.checked, directoryField.text.trim(), passwordField.text)
-            }
-            Button {
-                text: "Save && Connect"
                 highlighted: true
                 onClicked: {
                     root.profiles.saveProfile(root.profiles.activeProfileId, nameField.text.trim(), urlField.text.trim(), userField.text, rememberBox.checked, directoryField.text.trim(), passwordField.text)
-                    root.connectRequested(root.profiles.activeProfileId, urlField.text.trim(), userField.text, passwordField.text)
-                    root.close()
+                    root.profileSaved(root.profiles.activeProfileId, passwordField.text)
                 }
             }
         }

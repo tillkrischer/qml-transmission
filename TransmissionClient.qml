@@ -322,15 +322,19 @@ QtObject {
         request("torrent_add", params, true, callback)
     }
 
-    function startTorrent(hash, callback) {
-        request("torrent_start", { ids: [hash] }, true, callback)
+    function torrentIds(hashes) {
+        return Array.isArray(hashes) ? hashes : [hashes]
     }
 
-    function stopTorrent(hash, callback) {
-        request("torrent_stop", { ids: [hash] }, true, callback)
+    function startTorrent(hashes, callback) {
+        request("torrent_start", { ids: torrentIds(hashes) }, true, callback)
     }
 
-    function removeTorrent(hash, callback) {
-        request("torrent_remove", { ids: [hash], delete_local_data: false }, true, callback)
+    function stopTorrent(hashes, callback) {
+        request("torrent_stop", { ids: torrentIds(hashes) }, true, callback)
+    }
+
+    function removeTorrent(hashes, callback) {
+        request("torrent_remove", { ids: torrentIds(hashes), delete_local_data: false }, true, callback)
     }
 }

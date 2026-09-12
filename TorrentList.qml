@@ -9,23 +9,93 @@ Item {
     id: root
     required property TorrentStore store
     property string selectedHash: ""
+    property var selectedHashes: []
+    property string selectionAnchorHash: ""
     readonly property int tableWidth: 1120
     readonly property int tablePadding: 8
     readonly property int columnSpacing: 8
     readonly property int nameColumnWidth: tableWidth - (2 * tablePadding) - (8 * columnSpacing)
                                                    - 82 - 92 - 135 - 84 - 84 - 62 - 70 - 150
-    signal selectionChanged(string torrentHash)
+    signal selectionChanged(string torrentHash, var torrentHashes)
+    signal actionRequested(string action, var torrentHashes)
 
-    function select(hash) {
-        selectedHash = hash
-        selectionChanged(hash)
+    function containsHash(hashes, hash) {
+        return hashes.indexOf(hash) >= 0
+    }
+
+    function modelIndexForHash(hash) {
+        for (var i = 0; i < store.model.count; ++i) {
+            if (String(store.model.get(i).hash_string) === hash)
+                return i
+        }
+        return -1
+    }
+
+    function hasTorrentWithStoppedState(hashes, stopped) {
+        for (var i = 0; i < hashes.length; ++i) {
+            var torrent = store.torrentByHash(hashes[i])
+            if (torrent && ((torrent.status === 0) === stopped))
+                return true
+        }
+        return false
+    }
+
+    function selectIndex(index, modifiers, contextClick) {
+        if (index < 0 || index >= store.model.count)
+            return []
+
+        var hash = String(store.model.get(index).hash_string)
+        var shift = (modifiers & Qt.ShiftModifier) !== 0
+        var control = (modifiers & Qt.ControlModifier) !== 0
+
+        // A context click inside the current selection operates on the whole
+        // selection, matching conventional desktop list behaviour.
+        if (contextClick && !shift && !control && containsHash(selectedHashes, hash))
+            return selectedHashes
+
+        var next = []
+        if (shift) {
+            var anchorIndex = modelIndexForHash(selectionAnchorHash)
+            if (anchorIndex < 0)
+                anchorIndex = index
+            if (control)
+                next = selectedHashes.slice()
+            var first = Math.min(anchorIndex, index)
+            var last = Math.max(anchorIndex, index)
+            for (var i = first; i <= last; ++i) {
+                var rangeHash = String(store.model.get(i).hash_string)
+                if (!containsHash(next, rangeHash))
+                    next.push(rangeHash)
+            }
+        } else if (control) {
+            next = selectedHashes.slice()
+            var existing = next.indexOf(hash)
+            if (existing >= 0)
+                next.splice(existing, 1)
+            else
+                next.push(hash)
+            selectionAnchorHash = hash
+        } else {
+            next = [hash]
+            selectionAnchorHash = hash
+        }
+
+        var primary = containsHash(next, hash) ? hash : (next.length ? next[next.length - 1] : "")
+        selectionChanged(primary, next)
+        return next
     }
 
     Connections {
         target: root.store
         function onUpdated() {
-            if (root.selectedHash && !root.store.torrentByHash(root.selectedHash))
-                root.select("")
+            var valid = root.selectedHashes.filter(function(hash) {
+                return !!root.store.torrentByHash(hash)
+            })
+            if (valid.length !== root.selectedHashes.length) {
+                var primary = root.containsHash(valid, root.selectedHash)
+                            ? root.selectedHash : (valid.length ? valid[valid.length - 1] : "")
+                root.selectionChanged(primary, valid)
+            }
         }
     }
 
@@ -101,6 +171,7 @@ Item {
 
             delegate: ItemDelegate {
                 id: row
+                required property int index
                 required property int id
                 required property string hash_string
                 required property string name
@@ -120,8 +191,20 @@ Item {
                 rightPadding: root.tablePadding
                 topPadding: 0
                 bottomPadding: 0
-                highlighted: root.selectedHash === hash_string
-                onClicked: root.select(hash_string)
+                highlighted: root.containsHash(root.selectedHashes, hash_string)
+
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: function(mouse) {
+                        var contextClick = mouse.button === Qt.RightButton
+                        var targetHashes = root.selectIndex(row.index, mouse.modifiers, contextClick)
+                        if (contextClick) {
+                            contextMenu.targetHashes = targetHashes.slice()
+                            contextMenu.popup()
+                        }
+                    }
+                }
 
                 contentItem: Row {
                     spacing: root.columnSpacing
@@ -158,5 +241,28 @@ Item {
         visible: list.count === 0
         text: root.store.items.length === 0 ? "No torrents" : "No matching torrents"
         color: palette.placeholderText
+    }
+
+    Menu {
+        id: contextMenu
+        property var targetHashes: []
+        MenuItem {
+            text: contextMenu.targetHashes.length > 1 ? "Start selected" : "Start"
+            enabled: root.store.client.connected
+                     && root.hasTorrentWithStoppedState(contextMenu.targetHashes, true)
+            onTriggered: root.actionRequested("start", contextMenu.targetHashes.slice())
+        }
+        MenuItem {
+            text: contextMenu.targetHashes.length > 1 ? "Stop selected" : "Stop"
+            enabled: root.store.client.connected
+                     && root.hasTorrentWithStoppedState(contextMenu.targetHashes, false)
+            onTriggered: root.actionRequested("stop", contextMenu.targetHashes.slice())
+        }
+        MenuSeparator {}
+        MenuItem {
+            text: contextMenu.targetHashes.length > 1 ? "Remove selected…" : "Remove…"
+            enabled: contextMenu.targetHashes.length > 0 && root.store.client.connected
+            onTriggered: root.actionRequested("remove", contextMenu.targetHashes.slice())
+        }
     }
 }

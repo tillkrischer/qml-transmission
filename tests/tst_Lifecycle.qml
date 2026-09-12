@@ -8,6 +8,15 @@ TestCase {
     TransmissionClient { id: client }
     TorrentStore { id: store; client: client }
     TorrentFilesStore { id: files; client: client; draftMode: true }
+    TorrentList {
+        id: torrentList
+        store: store
+        visible: false
+        onSelectionChanged: function(torrentHash, torrentHashes) {
+            torrentList.selectedHash = torrentHash
+            torrentList.selectedHashes = torrentHashes
+        }
+    }
     SignalSpy { id: rowsInsertedSpy; target: store.model; signalName: "rowsInserted" }
     SignalSpy { id: rowsRemovedSpy; target: store.model; signalName: "rowsRemoved" }
 
@@ -15,8 +24,13 @@ TestCase {
         client.disconnectFromServer()
         store.activateProfile("one", false)
         store.items = []
+        store.sortRole = "added_date"
+        store.sortAscending = false
         store.refreshInFlight = false
         files.torrentHash = ""
+        torrentList.selectedHash = ""
+        torrentList.selectedHashes = []
+        torrentList.selectionAnchorHash = ""
         rowsInsertedSpy.clear()
         rowsRemovedSpy.clear()
     }
@@ -75,6 +89,45 @@ TestCase {
         compare(store.model.count, 2)
         compare(store.model.get(0).hash_string, "two")
         compare(store.model.get(1).hash_string, "three")
+    }
+
+    function test_torrentListRangeAndToggleSelection() {
+        store.sortRole = "name"
+        store.sortAscending = true
+        store.items = [
+            { id: 1, hash_string: "one", name: "One" },
+            { id: 2, hash_string: "two", name: "Two" },
+            { id: 3, hash_string: "three", name: "Three" }
+        ]
+        store.rebuildVisibleModel()
+
+        torrentList.selectIndex(0, Qt.NoModifier, false)
+        compare(torrentList.selectedHashes.length, 1)
+        compare(torrentList.selectedHashes[0], "one")
+
+        torrentList.selectIndex(2, Qt.ShiftModifier, false)
+        compare(torrentList.selectedHashes.length, 3)
+        compare(torrentList.selectedHash, "two")
+
+        torrentList.selectIndex(1, Qt.ControlModifier, false)
+        compare(torrentList.selectedHashes.length, 2)
+        verify(torrentList.selectedHashes.indexOf("three") < 0)
+    }
+
+    function test_torrentListContextClickPreservesSelection() {
+        store.sortRole = "name"
+        store.sortAscending = true
+        store.items = [
+            { id: 1, hash_string: "one", name: "One" },
+            { id: 2, hash_string: "two", name: "Two" }
+        ]
+        store.rebuildVisibleModel()
+        torrentList.selectedHash = "two"
+        torrentList.selectedHashes = ["one", "two"]
+
+        var targets = torrentList.selectIndex(1, Qt.NoModifier, true)
+        compare(targets.length, 2)
+        compare(torrentList.selectedHashes.length, 2)
     }
 
     function test_draftArgumentsUseDaemonIndices() {

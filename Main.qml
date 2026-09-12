@@ -18,16 +18,16 @@ ApplicationWindow {
     y: Number(settings.value("y", (Screen.height - height) / 2))
 
     property string selectedHash: ""
+    property var selectedHashes: []
     property var selectedTorrent: store.torrentByHash(selectedHash)
+    property var pendingRemovalHashes: []
     property string transientMessage: ""
     property string pendingConnectProfileId: ""
+    property bool startupComplete: false
 
     Component.onCompleted: {
-        var profile = profiles.activeProfile
-        if (profile) {
-            client.configure(profile.endpoint, profile.username, profiles.passwordFor(profile.id), profile.id)
-            store.activateProfile(profile.id, false)
-        }
+        startupComplete = true
+        connectActiveProfile()
     }
     onClosing: function(close) {
         if (addController.active) {
@@ -70,6 +70,10 @@ ApplicationWindow {
     }
     Connections {
         target: profiles
+        function onActiveProfileIdChanged() {
+            if (window.startupComplete)
+                window.connectActiveProfile()
+        }
         function onPasswordReady(profileId, password, error) {
             if (window.pendingConnectProfileId !== profileId) return
             window.pendingConnectProfileId = ""
@@ -98,17 +102,26 @@ ApplicationWindow {
             return
         }
         selectedHash = ""
+        selectedHashes = []
         selectedTorrent = null
         store.activateProfile(profile.id, false)
         client.activateProfile(profile.id, profile.endpoint, profile.username, password || "", connectNow)
     }
 
-    function selectAndConnect(profileId) {
-        var profile = profiles.profile(profileId)
+    function connectActiveProfile() {
+        var profile = profiles.activeProfile
         if (!profile) return
-        profiles.select(profileId)
-        pendingConnectProfileId = profileId
-        profiles.requestPassword(profileId)
+        pendingConnectProfileId = profile.id
+        profiles.requestPassword(profile.id)
+    }
+
+    function hasSelectedTorrentWithStoppedState(stopped) {
+        for (var i = 0; i < selectedHashes.length; ++i) {
+            var torrent = store.torrentByHash(selectedHashes[i])
+            if (torrent && ((torrent.status === 0) === stopped))
+                return true
+        }
+        return false
     }
 
     header: ToolBar {
@@ -120,17 +133,26 @@ ApplicationWindow {
                 text: "Start"
                 icon.name: "media-playback-start"
                 icon.source: "icons/start.svg"
-                enabled: client.connected && window.selectedTorrent && window.selectedTorrent.status === 0
-                onClicked: store.start(window.selectedHash)
+                enabled: client.connected && window.hasSelectedTorrentWithStoppedState(true)
+                onClicked: store.start(window.selectedHashes)
             }
             ToolButton {
                 text: "Stop"
                 icon.name: "media-playback-stop"
                 icon.source: "icons/stop.svg"
-                enabled: client.connected && window.selectedTorrent && window.selectedTorrent.status !== 0
-                onClicked: store.stop(window.selectedHash)
+                enabled: client.connected && window.hasSelectedTorrentWithStoppedState(false)
+                onClicked: store.stop(window.selectedHashes)
             }
-            ToolButton { text: "Remove"; icon.name: "edit-delete"; icon.source: "icons/remove.svg"; enabled: client.connected && window.selectedTorrent; onClicked: removeDialog.open() }
+            ToolButton {
+                text: "Remove"
+                icon.name: "edit-delete"
+                icon.source: "icons/remove.svg"
+                enabled: client.connected && window.selectedHashes.length > 0
+                onClicked: {
+                    window.pendingRemovalHashes = window.selectedHashes.slice()
+                    removeDialog.open()
+                }
+            }
             Item { Layout.fillWidth: true }
             ComboBox {
                 id: profileSelector
@@ -139,15 +161,9 @@ ApplicationWindow {
                 textRole: "name"
                 currentIndex: Math.max(0, profiles.profiles.findIndex(function(p) { return p.id === profiles.activeProfileId }))
                 enabled: !addController.active
-                onActivated: function(index) { window.selectAndConnect(profiles.profiles[index].id) }
+                onActivated: function(index) { profiles.select(profiles.profiles[index].id) }
             }
             ToolButton { text: "Profiles"; icon.name: "preferences-system-network"; icon.source: "icons/profiles.svg"; onClicked: connectionDialog.open() }
-            ToolButton {
-                text: client.connected || client.connecting ? "Disconnect" : "Connection"
-                icon.name: client.connected || client.connecting ? "network-disconnect" : "network-connect"
-                icon.source: client.connected || client.connecting ? "icons/disconnect.svg" : "icons/connect.svg"
-                onClicked: client.connected || client.connecting ? client.disconnectFromServer() : window.selectAndConnect(profiles.activeProfileId)
-            }
         }
     }
 
@@ -198,13 +214,26 @@ ApplicationWindow {
                         onTextChanged: store.searchText = text
                     }
                     TorrentList {
+                        id: torrentList
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         store: store
                         selectedHash: window.selectedHash
-                        onSelectionChanged: function(torrentHash) {
+                        selectedHashes: window.selectedHashes
+                        onSelectionChanged: function(torrentHash, torrentHashes) {
                             window.selectedHash = torrentHash
+                            window.selectedHashes = torrentHashes
                             window.selectedTorrent = store.torrentByHash(torrentHash)
+                        }
+                        onActionRequested: function(action, torrentHashes) {
+                            if (action === "start")
+                                store.start(torrentHashes)
+                            else if (action === "stop")
+                                store.stop(torrentHashes)
+                            else if (action === "remove") {
+                                window.pendingRemovalHashes = torrentHashes
+                                removeDialog.open()
+                            }
                         }
                     }
                 }
@@ -250,7 +279,7 @@ ApplicationWindow {
         anchors.centerIn: Overlay.overlay
         profiles: profiles
         profileSwitchingAllowed: !addController.active
-        onConnectRequested: function(profileId, endpoint, username, password) {
+        onProfileSaved: function(profileId, password) {
             var profile = profiles.profile(profileId)
             window.activateProfile(profile, password, true)
         }
@@ -271,9 +300,15 @@ ApplicationWindow {
         Label {
             width: removeDialog.availableWidth
             wrapMode: Text.WordWrap
-            text: "Remove “" + (window.selectedTorrent ? window.selectedTorrent.name : "") + "” from Transmission? Downloaded files will be preserved."
+            text: window.pendingRemovalHashes.length === 1
+                  ? "Remove “" + (store.torrentByHash(window.pendingRemovalHashes[0])
+                                  ? store.torrentByHash(window.pendingRemovalHashes[0]).name : "")
+                    + "” from Transmission? Downloaded files will be preserved."
+                  : "Remove " + window.pendingRemovalHashes.length
+                    + " torrents from Transmission? Downloaded files will be preserved."
         }
-        onAccepted: store.remove(window.selectedHash)
+        onAccepted: store.remove(window.pendingRemovalHashes)
+        onClosed: window.pendingRemovalHashes = []
     }
     Dialog {
         id: closeDraftDialog

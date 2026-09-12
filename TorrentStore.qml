@@ -228,7 +228,24 @@ QtObject {
         })
     }
 
-    function start(hash) { runMutation("Torrent started", function(done) { client.startTorrent(hash, done) }) }
-    function stop(hash) { runMutation("Torrent stopped", function(done) { client.stopTorrent(hash, done) }) }
-    function remove(hash) { runMutation("Torrent removed (downloaded files preserved)", function(done) { client.removeTorrent(hash, done) }) }
+    function mutationLabel(count, singular, plural) {
+        return count === 1 ? singular : String(count) + " " + plural
+    }
+
+    function start(hashes) {
+        var ids = Array.isArray(hashes) ? hashes : [hashes]
+        runMutation(mutationLabel(ids.length, "Torrent started", "torrents started"),
+                    function(done) { client.startTorrent(ids, done) })
+    }
+    function stop(hashes) {
+        var ids = Array.isArray(hashes) ? hashes : [hashes]
+        runMutation(mutationLabel(ids.length, "Torrent stopped", "torrents stopped"),
+                    function(done) { client.stopTorrent(ids, done) })
+    }
+    function remove(hashes) {
+        var ids = Array.isArray(hashes) ? hashes : [hashes]
+        runMutation(mutationLabel(ids.length, "Torrent removed (downloaded files preserved)",
+                                  "torrents removed (downloaded files preserved)"),
+                    function(done) { client.removeTorrent(ids, done) })
+    }
 }

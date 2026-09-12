@@ -29,7 +29,7 @@ qt_add_qml_module(qml-transmission
         js/Format.js js/RpcProtocol.js js/FileTree.js
     RESOURCES
         icons/add.svg icons/start.svg icons/stop.svg icons/remove.svg
-        icons/connect.svg icons/disconnect.svg icons/profiles.svg
+        icons/profiles.svg
 )
 
 target_link_libraries(qml-transmission PRIVATE

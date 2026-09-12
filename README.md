@@ -29,7 +29,8 @@ nix-shell --run './build/qml-transmission'
 Use **Profiles** to save one or more named servers. Password persistence is
 opt-in and uses the desktop credential store through QtKeychain. A password is
 never placed in the application INI file, and there is no plaintext fallback if
-the keyring is locked or unavailable.
+the keyring is locked or unavailable. The last selected profile is connected on
+startup, and selecting another profile switches the connection automatically.
 
 ## Supported workflow
 
