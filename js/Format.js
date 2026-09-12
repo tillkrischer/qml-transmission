@@ -20,6 +20,11 @@ function ratio(value) {
     return value >= 0 && isFinite(value) ? value.toFixed(2) : "—"
 }
 
+function percent(value) {
+    value = Number(value)
+    return isFinite(value) ? (value * 100).toFixed(1) + "%" : "—"
+}
+
 function duration(seconds) {
     seconds = Number(seconds)
     if (seconds < 0 || !isFinite(seconds) || seconds > 315360000)

@@ -217,8 +217,6 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             width: parent.width
                             value: row.percent_complete
-                            ToolTip.text: Math.round(row.percent_complete * 100) + "%"
-                            ToolTip.visible: hovered
                         }
                     }
                     RowLayout {

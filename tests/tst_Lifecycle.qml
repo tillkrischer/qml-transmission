@@ -32,6 +32,7 @@ TestCase {
         store.items = []
         store.sortRole = "added_date"
         store.sortAscending = false
+        store.selectFilter("status", "all")
         store.refreshInFlight = false
         files.torrentHash = ""
         fileView.selectedKeys = []
@@ -97,6 +98,32 @@ TestCase {
         compare(store.model.count, 2)
         compare(store.model.get(0).hash_string, "two")
         compare(store.model.get(1).hash_string, "three")
+    }
+
+    function test_folderAndTrackerFiltersAreExclusive() {
+        store.sortRole = "name"
+        store.sortAscending = true
+        store.items = [
+            { id: 1, hash_string: "one", name: "One", download_dir: "/data/a",
+              trackers: [{ announce: "https://tracker.example.org/announce" }] },
+            { id: 2, hash_string: "two", name: "Two", download_dir: "/data/b",
+              trackers: [{ announce: "udp://tracker.example.org:80/announce" }] },
+            { id: 3, hash_string: "three", name: "Three", download_dir: "/data/a",
+              trackers: [{ announce: "https://other.example/announce" }] }
+        ]
+        store.rebuildVisibleModel()
+
+        compare(store.downloadDirectories.length, 2)
+        compare(store.trackerDomains.length, 2)
+        compare(store.trackerDomain("https://User:secret@TRACKER.example.org:443/a"),
+                "tracker.example.org")
+
+        store.selectFilter("directory", "/data/a")
+        compare(store.model.count, 2)
+        store.selectFilter("tracker", "tracker.example.org")
+        compare(store.filterKind, "tracker")
+        compare(store.filterValue, "tracker.example.org")
+        compare(store.model.count, 2)
     }
 
     function test_torrentListRangeAndToggleSelection() {

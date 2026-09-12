@@ -334,7 +334,10 @@ QtObject {
         request("torrent_stop", { ids: torrentIds(hashes) }, true, callback)
     }
 
-    function removeTorrent(hashes, callback) {
-        request("torrent_remove", { ids: torrentIds(hashes), delete_local_data: false }, true, callback)
+    function removeTorrent(hashes, callback, deleteLocalData) {
+        request("torrent_remove", {
+            ids: torrentIds(hashes),
+            delete_local_data: deleteLocalData === true
+        }, true, callback)
     }
 }

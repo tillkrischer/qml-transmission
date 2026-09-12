@@ -6,7 +6,11 @@ QtObject {
     required property TransmissionClient client
     property alias model: visibleModel
     property string searchText: ""
-    property string statusFilter: "all"
+    property string filterKind: "status"
+    property string filterValue: "all"
+    property bool filterChangeInProgress: false
+    property var downloadDirectories: []
+    property var trackerDomains: []
     property string sortRole: "added_date"
     property bool sortAscending: false
     property bool refreshInFlight: false
@@ -45,7 +49,8 @@ QtObject {
     }
 
     onSearchTextChanged: rebuildVisibleModel()
-    onStatusFilterChanged: rebuildVisibleModel()
+    onFilterKindChanged: if (!filterChangeInProgress) rebuildVisibleModel()
+    onFilterValueChanged: if (!filterChangeInProgress) rebuildVisibleModel()
     onSortRoleChanged: rebuildVisibleModel()
     onSortAscendingChanged: rebuildVisibleModel()
 
@@ -80,7 +85,7 @@ QtObject {
             "id", "name", "hash_string", "download_dir", "total_size",
             "percent_complete", "status", "rate_download", "rate_upload",
             "upload_ratio", "eta", "downloaded_ever", "uploaded_ever", "error_string"
-            , "error", "added_date"
+            , "error", "added_date", "trackers"
         ] }, false, function(result, error) {
             torrentDone = true
             if (error) {
@@ -106,17 +111,26 @@ QtObject {
     }
 
     function rebuildVisibleModel() {
+        updateFilterOptions()
         var query = searchText.trim().toLowerCase()
         var filtered = []
         for (var i = 0; i < items.length; ++i) {
             var torrent = items[i]
             if (query && String(torrent.name).toLowerCase().indexOf(query) < 0)
                 continue
-            if (statusFilter === "downloading" && torrent.status !== 3 && torrent.status !== 4)
+            if (filterKind === "status" && filterValue === "downloading"
+                    && torrent.status !== 3 && torrent.status !== 4)
                 continue
-            if (statusFilter === "seeding" && torrent.status !== 5 && torrent.status !== 6)
+            if (filterKind === "status" && filterValue === "seeding"
+                    && torrent.status !== 5 && torrent.status !== 6)
                 continue
-            if (statusFilter === "stopped" && torrent.status !== 0)
+            if (filterKind === "status" && filterValue === "stopped" && torrent.status !== 0)
+                continue
+            if (filterKind === "directory"
+                    && String(torrent.download_dir || "") !== filterValue)
+                continue
+            if (filterKind === "tracker"
+                    && trackerDomainsForTorrent(torrent).indexOf(filterValue) < 0)
                 continue
             filtered.push(torrent)
         }
@@ -139,6 +153,64 @@ QtObject {
             return (Number(a.id) - Number(b.id)) * direction
         })
         reconcileVisibleModel(filtered)
+    }
+
+    function trackerDomain(url) {
+        var match = String(url || "").match(/^[a-z][a-z0-9+.-]*:\/\/(?:[^@\/]+@)?(\[[^\]]+\]|[^:\/?#]+)/i)
+        return match ? match[1].toLowerCase() : ""
+    }
+
+    function selectFilter(kind, value) {
+        if (filterKind === kind && filterValue === value)
+            return
+        filterChangeInProgress = true
+        filterKind = kind
+        filterValue = value
+        filterChangeInProgress = false
+        rebuildVisibleModel()
+    }
+
+    function trackerDomainsForTorrent(torrent) {
+        var result = []
+        var trackers = torrent && Array.isArray(torrent.trackers) ? torrent.trackers : []
+        for (var i = 0; i < trackers.length; ++i) {
+            var domain = trackerDomain(trackers[i].announce)
+            if (domain && result.indexOf(domain) < 0)
+                result.push(domain)
+        }
+        return result
+    }
+
+    function updateFilterOptions() {
+        var directories = []
+        var domains = []
+        for (var i = 0; i < items.length; ++i) {
+            var directory = String(items[i].download_dir || "")
+            if (directory && directories.indexOf(directory) < 0)
+                directories.push(directory)
+            var torrentDomains = trackerDomainsForTorrent(items[i])
+            for (var j = 0; j < torrentDomains.length; ++j)
+                if (domains.indexOf(torrentDomains[j]) < 0)
+                    domains.push(torrentDomains[j])
+        }
+        directories.sort(function(a, b) { return a.localeCompare(b) })
+        domains.sort(function(a, b) { return a.localeCompare(b) })
+        if (!sameValues(downloadDirectories, directories))
+            downloadDirectories = directories
+        if (!sameValues(trackerDomains, domains))
+            trackerDomains = domains
+        if ((filterKind === "directory" && directories.indexOf(filterValue) < 0)
+                || (filterKind === "tracker" && domains.indexOf(filterValue) < 0))
+            selectFilter("status", "all")
+    }
+
+    function sameValues(left, right) {
+        if (left.length !== right.length)
+            return false
+        for (var i = 0; i < left.length; ++i)
+            if (left[i] !== right[i])
+                return false
+        return true
     }
 
     // Keep existing ListModel rows alive across polling refreshes. Rebuilding the
@@ -242,10 +314,14 @@ QtObject {
         runMutation(mutationLabel(ids.length, "Torrent stopped", "torrents stopped"),
                     function(done) { client.stopTorrent(ids, done) })
     }
-    function remove(hashes) {
+    function remove(hashes, deleteLocalData) {
         var ids = Array.isArray(hashes) ? hashes : [hashes]
-        runMutation(mutationLabel(ids.length, "Torrent removed (downloaded files preserved)",
-                                  "torrents removed (downloaded files preserved)"),
-                    function(done) { client.removeTorrent(ids, done) })
+        var deleting = deleteLocalData === true
+        var singular = deleting ? "Torrent and downloaded files removed"
+                                : "Torrent removed (downloaded files preserved)"
+        var plural = deleting ? "torrents and downloaded files removed"
+                              : "torrents removed (downloaded files preserved)"
+        runMutation(mutationLabel(ids.length, singular, plural),
+                    function(done) { client.removeTorrent(ids, done, deleting) })
     }
 }

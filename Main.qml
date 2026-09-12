@@ -124,6 +124,18 @@ ApplicationWindow {
         return false
     }
 
+    function confirmRemoval(hashes) {
+        pendingRemovalHashes = hashes.slice()
+        deleteDataCheck.checked = false
+        removeDialog.open()
+    }
+
+    function folderName(path) {
+        var normalized = String(path).replace(/\/+$/, "")
+        var separator = normalized.lastIndexOf("/")
+        return separator >= 0 ? normalized.slice(separator + 1) : normalized
+    }
+
     header: ToolBar {
         RowLayout {
             anchors.fill: parent
@@ -149,8 +161,7 @@ ApplicationWindow {
                 icon.source: "icons/remove.svg"
                 enabled: client.connected && window.selectedHashes.length > 0
                 onClicked: {
-                    window.pendingRemovalHashes = window.selectedHashes.slice()
-                    removeDialog.open()
+                    window.confirmRemoval(window.selectedHashes)
                 }
             }
             Item { Layout.fillWidth: true }
@@ -172,15 +183,20 @@ ApplicationWindow {
         orientation: Qt.Horizontal
 
         Frame {
-            SplitView.preferredWidth: 165
-            SplitView.minimumWidth: 130
+            SplitView.preferredWidth: 220
+            SplitView.minimumWidth: 180
             ColumnLayout {
                 anchors.fill: parent
-                Label { text: "Show"; font.bold: true; Layout.leftMargin: 8 }
                 ButtonGroup { id: filterGroup }
+                RadioButton {
+                    text: "All torrents"
+                    checked: store.filterKind === "status" && store.filterValue === "all"
+                    ButtonGroup.group: filterGroup
+                    Layout.fillWidth: true
+                    onClicked: store.selectFilter("status", "all")
+                }
                 Repeater {
                     model: [
-                        { label: "All", value: "all" },
                         { label: "Downloading", value: "downloading" },
                         { label: "Seeding", value: "seeding" },
                         { label: "Stopped", value: "stopped" }
@@ -188,10 +204,55 @@ ApplicationWindow {
                     RadioButton {
                         required property var modelData
                         text: modelData.label
-                        checked: modelData.value === "all"
+                        checked: store.filterKind === "status" && store.filterValue === modelData.value
                         ButtonGroup.group: filterGroup
                         Layout.fillWidth: true
-                        onClicked: store.statusFilter = modelData.value
+                        onClicked: store.selectFilter("status", modelData.value)
+                    }
+                }
+                Rectangle {
+                    visible: store.downloadDirectories.length > 0
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 4
+                    Layout.rightMargin: 4
+                    Layout.topMargin: 4
+                    Layout.bottomMargin: 4
+                    implicitHeight: 1
+                    color: palette.mid
+                }
+                Repeater {
+                    model: store.downloadDirectories
+                    RadioButton {
+                        required property string modelData
+                        text: window.folderName(modelData)
+                        checked: store.filterKind === "directory" && store.filterValue === modelData
+                        ButtonGroup.group: filterGroup
+                        Layout.fillWidth: true
+                        hoverEnabled: true
+                        ToolTip.text: modelData
+                        ToolTip.visible: hovered && text !== modelData
+                        onClicked: store.selectFilter("directory", modelData)
+                    }
+                }
+                Rectangle {
+                    visible: store.trackerDomains.length > 0
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 4
+                    Layout.rightMargin: 4
+                    Layout.topMargin: 4
+                    Layout.bottomMargin: 4
+                    implicitHeight: 1
+                    color: palette.mid
+                }
+                Repeater {
+                    model: store.trackerDomains
+                    RadioButton {
+                        required property string modelData
+                        text: modelData
+                        checked: store.filterKind === "tracker" && store.filterValue === modelData
+                        ButtonGroup.group: filterGroup
+                        Layout.fillWidth: true
+                        onClicked: store.selectFilter("tracker", modelData)
                     }
                 }
                 Item { Layout.fillHeight: true }
@@ -231,8 +292,7 @@ ApplicationWindow {
                             else if (action === "stop")
                                 store.stop(torrentHashes)
                             else if (action === "remove") {
-                                window.pendingRemovalHashes = torrentHashes
-                                removeDialog.open()
+                                window.confirmRemoval(torrentHashes)
                             }
                         }
                     }
@@ -297,17 +357,31 @@ ApplicationWindow {
         width: 500
         standardButtons: Dialog.Yes | Dialog.No
         anchors.centerIn: Overlay.overlay
-        Label {
+        ColumnLayout {
             width: removeDialog.availableWidth
-            wrapMode: Text.WordWrap
-            text: window.pendingRemovalHashes.length === 1
-                  ? "Remove “" + (store.torrentByHash(window.pendingRemovalHashes[0])
-                                  ? store.torrentByHash(window.pendingRemovalHashes[0]).name : "")
-                    + "” from Transmission? Downloaded files will be preserved."
-                  : "Remove " + window.pendingRemovalHashes.length
-                    + " torrents from Transmission? Downloaded files will be preserved."
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: window.pendingRemovalHashes.length === 1
+                      ? "Remove “" + (store.torrentByHash(window.pendingRemovalHashes[0])
+                                      ? store.torrentByHash(window.pendingRemovalHashes[0]).name : "")
+                        + "” from Transmission?"
+                      : "Remove " + window.pendingRemovalHashes.length + " torrents from Transmission?"
+            }
+            CheckBox {
+                id: deleteDataCheck
+                text: "Also delete downloaded files"
+                Layout.fillWidth: true
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: deleteDataCheck.checked
+                wrapMode: Text.WordWrap
+                color: palette.brightText
+                text: "Downloaded files will be permanently deleted from the Transmission server."
+            }
         }
-        onAccepted: store.remove(window.pendingRemovalHashes)
+        onAccepted: store.remove(window.pendingRemovalHashes, deleteDataCheck.checked)
         onClosed: window.pendingRemovalHashes = []
     }
     Dialog {

@@ -13,6 +13,12 @@ TestCase {
         compare(Format.duration(-1), "—")
         compare(Format.duration(3660), "1h 1m")
     }
+    function test_percent() {
+        compare(Format.percent(0), "0.0%")
+        compare(Format.percent(0.12345), "12.3%")
+        compare(Format.percent(1), "100.0%")
+        compare(Format.percent("bad"), "—")
+    }
     function test_status() {
         compare(Format.status(0), "Stopped")
         compare(Format.status(4), "Downloading")

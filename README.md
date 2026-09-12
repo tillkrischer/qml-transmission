@@ -34,12 +34,14 @@ startup, and selecting another profile switches the connection automatically.
 
 ## Supported workflow
 
-The client lists, searches, filters, and sorts torrents; shows general and file
-details; edits wanted files and Low/Normal/High priority; uploads local `.torrent`
-files; and adds magnet links or remote torrent URLs. Local files and torrent URLs
-are prepared paused so file choices can be applied before starting. Removal and
-draft cleanup always preserve downloaded data. Download paths refer to the daemon
-host, not the computer running this application.
+The client lists, searches, filters by status, download folder, or tracker domain,
+and sorts torrents; shows general and file details; edits wanted files and
+Low/Normal/High priority; uploads local `.torrent` files; and adds magnet links or
+remote torrent URLs. Torrent removal can optionally delete downloaded data after
+explicit confirmation. Local files and torrent URLs are prepared paused so file
+choices can be applied before starting. Draft cleanup always preserves downloaded
+data. Download paths refer to the daemon host, not the computer running this
+application.
 
 Magnets are added directly because their file metadata may not exist yet. Their
 files can be selected from the Files tab after metadata arrives; pre-start magnet
@@ -60,6 +62,6 @@ nix-shell --run 'qmllint -I build *.qml tests/*.qml'
 
 ## Current limitations
 
-Only one saved server is active at a time. Simultaneous server tabs, deleting
-downloaded data, peer/tracker editing, queue management, remote directory browsing,
+Only one saved server is active at a time. Simultaneous server tabs, peer/tracker
+editing, queue management, remote directory browsing,
 batch torrent selection, and tray integration are outside version 0.2.
