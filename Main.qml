@@ -254,7 +254,7 @@ ApplicationWindow {
                         Layout.fillWidth: true; Layout.fillHeight: true
                         currentIndex: detailTabs.currentIndex
                         TorrentDetails { torrent: window.selectedTorrent }
-                        TorrentFilesView { store: liveFiles }
+                        TorrentFilesView { store: liveFiles; detailsMode: true }
                     }
                 }
             }

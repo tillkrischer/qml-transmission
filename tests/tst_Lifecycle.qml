@@ -8,6 +8,12 @@ TestCase {
     TransmissionClient { id: client }
     TorrentStore { id: store; client: client }
     TorrentFilesStore { id: files; client: client; draftMode: true }
+    TorrentFilesView {
+        id: fileView
+        store: files
+        detailsMode: true
+        visible: false
+    }
     TorrentList {
         id: torrentList
         store: store
@@ -28,6 +34,8 @@ TestCase {
         store.sortAscending = false
         store.refreshInFlight = false
         files.torrentHash = ""
+        fileView.selectedKeys = []
+        fileView.selectionAnchorKey = ""
         torrentList.selectedHash = ""
         torrentList.selectedHashes = []
         torrentList.selectionAnchorHash = ""
@@ -147,5 +155,40 @@ TestCase {
         compare(args.unwanted[0], 1)
         compare(args.priorities.high[0], 1)
         compare(args.wanted[0], 0)
+    }
+
+    function test_fileViewRangeAndToggleSelection() {
+        files.loadDraft("hash", [
+            { name: "One", length: 10 },
+            { name: "Two", length: 20 },
+            { name: "Three", length: 30 }
+        ], [], 1)
+
+        fileView.selectIndex(0, Qt.NoModifier, false)
+        compare(fileView.selectedKeys.length, 1)
+
+        fileView.selectIndex(2, Qt.ShiftModifier, false)
+        compare(fileView.selectedKeys.length, 3)
+
+        fileView.selectIndex(1, Qt.ControlModifier, false)
+        compare(fileView.selectedKeys.length, 2)
+        verify(fileView.selectedKeys.indexOf(String(files.rows[1].key)) < 0)
+    }
+
+    function test_fileViewContextClickAndIndices() {
+        files.loadDraft("hash", [
+            { name: "folder/One", length: 10 },
+            { name: "folder/Two", length: 20 }
+        ], [], 1)
+        files.toggleExpanded(files.rows[0].key)
+
+        fileView.selectedKeys = [String(files.rows[0].key), String(files.rows[1].key)]
+        var targets = fileView.selectIndex(1, Qt.NoModifier, true)
+        compare(targets.length, 2)
+
+        var indices = fileView.indicesForKeys(targets)
+        compare(indices.length, 2)
+        verify(indices.indexOf(0) >= 0)
+        verify(indices.indexOf(1) >= 0)
     }
 }
