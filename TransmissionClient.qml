@@ -326,6 +326,11 @@ QtObject {
         return Array.isArray(hashes) ? hashes : [hashes]
     }
 
+    function setTorrentLocation(hash, directory, callback) {
+        if (!directory) { callback({}, null); return }
+        request("torrent_set_location", { ids: [hash], location: directory, move: false }, true, callback)
+    }
+
     function startTorrent(hashes, callback) {
         request("torrent_start", { ids: torrentIds(hashes) }, true, callback)
     }

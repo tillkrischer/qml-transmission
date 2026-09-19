@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtCore
+import QtQuick.Dialogs
 import "js/Format.js" as Format
 
 ApplicationWindow {
@@ -139,7 +140,8 @@ ApplicationWindow {
     header: ToolBar {
         RowLayout {
             anchors.fill: parent
-            ToolButton { text: "Add"; icon.name: "list-add"; icon.source: "icons/add.svg"; enabled: client.connected; onClicked: addDialog.open() }
+            ToolButton { text: "Torrent files"; icon.name: "list-add"; icon.source: "icons/add.svg"; enabled: client.connected && !addController.active; onClicked: torrentFileDialog.open() }
+            ToolButton { text: "Magnet link"; icon.name: "insert-link"; enabled: client.connected && !addController.active; onClicked: { magnetField.clear(); magnetDialog.open() } }
             ToolSeparator {}
             ToolButton {
                 text: "Start"
@@ -344,6 +346,32 @@ ApplicationWindow {
             window.activateProfile(profile, password, true)
         }
     }
+    FileDialog {
+        id: torrentFileDialog
+        title: "Choose torrent files"
+        fileMode: FileDialog.OpenFiles
+        nameFilters: ["Torrent files (*.torrent)"]
+        onAccepted: addDialog.openSources(selectedFiles, true)
+    }
+    Dialog {
+        id: magnetDialog
+        title: "Add magnet link"
+        modal: true
+        width: 560
+        anchors.centerIn: Overlay.overlay
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        onOpened: { standardButton(Dialog.Ok).enabled = magnetField.acceptableInput; magnetField.forceActiveFocus() }
+        onAccepted: addDialog.openSources([magnetField.text.trim()], false)
+        TextField {
+            id: magnetField
+            width: parent.width
+            placeholderText: "Magnet link"
+            selectByMouse: true
+            validator: RegularExpressionValidator { regularExpression: /\s*magnet:\?\S+\s*/i }
+            onAcceptableInputChanged: if (magnetDialog.visible) magnetDialog.standardButton(Dialog.Ok).enabled = acceptableInput
+            onAccepted: if (acceptableInput) magnetDialog.accept()
+        }
+    }
     AddTorrentDialog {
         id: addDialog
         anchors.centerIn: Overlay.overlay
@@ -409,7 +437,7 @@ ApplicationWindow {
             Label { text: "A confirmed paused draft from an earlier session is on this server."; Layout.preferredWidth: 440; wrapMode: Text.WordWrap }
             RowLayout {
                 Button { text: "Keep"; onClicked: { addController.clearRecovery(); recoveryDialog.close() } }
-                Button { text: "Resume"; onClicked: { addController.ownedHash = addController.recoveryHash; addController.loadFiles(); recoveryDialog.close(); addDialog.open() } }
+                Button { text: "Resume"; onClicked: { addController.ownedHash = addController.recoveryHash; addController.loadFiles(); recoveryDialog.close(); addDialog.openRecovery() } }
                 Button { text: "Remove"; onClicked: { addController.ownedHash = addController.recoveryHash; addController.cleanup(); recoveryDialog.close() } }
             }
         }

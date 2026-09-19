@@ -26,6 +26,9 @@ nix-shell --run 'cmake -S . -B build -G Ninja && cmake --build build'
 nix-shell --run './build/qml-transmission'
 ```
 
+Launch from `nix-shell` when using the Nix build so Qt uses the expected runtime
+environment and file-dialog integration.
+
 Use **Profiles** to save one or more named servers. Password persistence is
 opt-in and uses the desktop credential store through QtKeychain. A password is
 never placed in the application INI file, and there is no plaintext fallback if
@@ -36,14 +39,17 @@ startup, and selecting another profile switches the connection automatically.
 
 The client lists, searches, filters by status, download folder, or tracker domain,
 and sorts torrents; shows general and file details; edits wanted files and
-Low/Normal/High priority; uploads local `.torrent` files; and adds magnet links or
-remote torrent URLs. Torrent removal can optionally delete downloaded data after
-explicit confirmation. Local files and torrent URLs are prepared paused so file
-choices can be applied before starting. Draft cleanup always preserves downloaded
-data. Download paths refer to the daemon host, not the computer running this
+Low/Normal/High priority; uploads local `.torrent` files; and adds magnet links.
+Torrent removal can optionally delete downloaded data after explicit confirmation.
+
+Use **Torrent files** to select one or more files. Each torrent gets its own
+dialog for download location and file selection; confirming opens the next one.
+Use **Magnet link** to paste a link, then confirm to open the same options dialog.
+Torrents are prepared paused so choices can be applied before starting.
+Draft cleanup always preserves downloaded data. Download paths refer to the daemon host, not the computer running this
 application.
 
-Magnets are added directly because their file metadata may not exist yet. Their
+Magnet file metadata may not exist yet. In that case, their
 files can be selected from the Files tab after metadata arrives; pre-start magnet
 file selection is not supported.
 

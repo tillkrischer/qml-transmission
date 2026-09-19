@@ -9,6 +9,7 @@ QtObject {
     required property var fileReader
     property string state: "editing"
     property string source: ""
+    property string torrentName: ""
     property string directory: ""
     property bool localFile: false
     property bool startRequested: true
@@ -55,7 +56,7 @@ QtObject {
     }
 
     function reset() {
-        state = "editing"; source = ""; directory = ""; localFile = false
+        state = "editing"; torrentName = ""; source = ""; directory = ""; localFile = false
         startRequested = true; ownedHash = ""; ownedId = -1; errorMessage = ""
         cancelRequested = false
         draftStore.draftMode = true
@@ -70,14 +71,6 @@ QtObject {
         localFile = isLocal
         errorMessage = ""
         if (!source) { fail("Choose a torrent file or enter a link"); return }
-        if (!isLocal && /^magnet:/i.test(source)) {
-            state = "preparing"
-            client.addTorrent(source, directory, !shouldStart, false, function(result, error) {
-                if (error) { root.fail(error.message); return }
-                root.handleImmediateResult(result)
-            })
-            return
-        }
         if (isLocal) {
             state = "reading"
             readToken = "torrent-" + Date.now()
@@ -85,16 +78,6 @@ QtObject {
         } else {
             prepare(source, false)
         }
-    }
-
-    function handleImmediateResult(result) {
-        var duplicate = result.torrent_duplicate
-        var added = result.torrent_added
-        if (duplicate) { state = "done"; duplicateFound(duplicate.hash_string || ""); return }
-        if (!added) { fail("The server did not confirm that the torrent was added"); return }
-        profiles.recordDirectory(client.profileId, directory)
-        state = "done"
-        finished(added.hash_string || "")
     }
 
     function prepare(payload, metainfo) {
@@ -129,6 +112,7 @@ QtObject {
             var values = result.torrents || []
             if (!values.length) { fail("The prepared torrent is no longer available"); return }
             var torrent = values[0]
+            torrentName = torrent.name || source
             draftStore.loadDraft(hash, torrent.files || [], torrent.file_stats || [], torrent.metadata_percent_complete)
             state = "choosing"
             if (cancelRequested) cleanup()
@@ -137,12 +121,19 @@ QtObject {
 
     function apply() {
         if (state !== "choosing") return
-        if (startRequested && draftStore.selectedCount === 0) {
+        if (startRequested && draftStore.files.length > 0 && draftStore.selectedCount === 0) {
             fail("Select at least one file before starting, or turn off Start when ready")
             return
         }
         state = "applying"
         var args = draftStore.draftArguments()
+        client.setTorrentLocation(ownedHash, directory, function(result, error) {
+            if (error) { root.fail("Could not set download location: " + error.message); return }
+            root.applyFiles(args)
+        })
+    }
+
+    function applyFiles(args) {
         client.setTorrentFiles(ownedHash, args.wanted, args.unwanted, args.priorities, function(result, error) {
             if (error) { root.fail("Could not apply file choices: " + error.message); return }
             if (root.startRequested) root.start()

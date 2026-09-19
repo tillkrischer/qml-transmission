@@ -3,67 +3,65 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Dialogs
 
 Dialog {
     id: root
-    title: "Add torrent"
+    title: controller.torrentName ? "Add torrent — " + controller.torrentName : "Add torrent"
     modal: true
+    closePolicy: Popup.NoAutoClose
     standardButtons: Dialog.NoButton
     width: 760
-    height: controller.state === "choosing" ? 600 : 390
+    height: 600
     required property AddTorrentController controller
     required property ConnectionProfiles profiles
 
-    onOpened: {
-        if (!controller.active) controller.reset()
+    property var pendingSources: []
+    property bool localSources: true
+
+    function openSources(sources, localFile) {
+        pendingSources = Array.from(sources)
+        localSources = localFile
+        openNext()
+    }
+
+    function openRecovery() {
+        pendingSources = []
+        directoryField.editText = controller.directory || controller.client.defaultDownloadDirectory
+        startBox.checked = controller.startRequested
+        open()
+    }
+
+    function openNext() {
+        if (!pendingSources.length) return
+        var source = pendingSources[0]
+        pendingSources = pendingSources.slice(1)
+        controller.reset()
         var profile = profiles.activeProfile
         directoryField.editText = profile && profile.defaultDirectory
                 ? profile.defaultDirectory : controller.client.defaultDownloadDirectory
-    }
-
-    FileDialog {
-        id: fileDialog
-        title: "Choose a torrent file"
-        nameFilters: ["Torrent files (*.torrent)", "All files (*)"]
-        onAccepted: sourceField.text = selectedFile
+        startBox.checked = true
+        open()
+        controller.begin(source, directoryField.editText, true, localSources)
     }
 
     ColumnLayout {
         anchors.fill: parent
-        TabBar {
-            id: modeTabs
-            Layout.fillWidth: true
-            enabled: controller.state === "editing"
-            TabButton { text: "File" }
-            TabButton { text: "Link" }
-        }
-        Label {
-            Layout.fillWidth: true; wrapMode: Text.WordWrap
-            text: modeTabs.currentIndex === 0
-                  ? "The file is uploaded and a paused torrent is created before you choose files."
-                  : (/^magnet:/i.test(sourceField.text) ? "Magnet metadata may arrive later. Choose files from the Files tab after it becomes available." : "A paused torrent is created before you choose files.")
-        }
-        RowLayout {
-            Layout.fillWidth: true
-            TextField {
-                id: sourceField; Layout.fillWidth: true; selectByMouse: true
-                readOnly: controller.state !== "editing"
-                placeholderText: modeTabs.currentIndex === 0 ? "Local .torrent file" : "Magnet link or torrent URL"
-            }
-            Button { visible: modeTabs.currentIndex === 0; text: "Browse…"; enabled: controller.state === "editing"; onClicked: fileDialog.open() }
-        }
         Label { text: "Download directory on the server" }
         ComboBox {
             id: directoryField
             Layout.fillWidth: true; editable: true
-            enabled: controller.state === "editing"
+            enabled: !controller.busy
             model: profiles.activeProfile ? profiles.activeProfile.recentDirectories : []
         }
-        CheckBox { id: startBox; text: "Start when file choices are applied"; checked: true; enabled: controller.state === "editing" || controller.state === "choosing" }
+        CheckBox { id: startBox; text: "Start when ready"; checked: true; enabled: !controller.busy }
+        Label {
+            Layout.fillWidth: true; wrapMode: Text.WordWrap
+            visible: controller.state === "choosing" && !controller.draftStore.files.length
+            text: "Magnet metadata is not available yet. You can choose files in the Files tab once metadata arrives."
+        }
         TorrentFilesView {
             Layout.fillWidth: true; Layout.fillHeight: true
-            visible: controller.state === "choosing"
+            enabled: controller.state === "choosing"
             store: controller.draftStore
         }
         Label {
@@ -74,34 +72,36 @@ Dialog {
         RowLayout {
             Layout.fillWidth: true
             Button {
-                text: controller.ownedHash ? "Leave paused" : "Cancel"
-                enabled: true
-                onClicked: { controller.ownedHash ? controller.leavePaused() : controller.cancel(); root.close() }
+                text: "Cancel"
+                enabled: controller.state !== "applying" && controller.state !== "starting" && controller.state !== "cancelling"
+                onClicked: { root.pendingSources = []; controller.cancel() }
             }
             Button {
-                text: "Remove draft"
+                text: "Leave paused"
                 visible: !!controller.ownedHash
                 enabled: !controller.busy
-                onClicked: controller.cleanup()
+                onClicked: { root.pendingSources = []; controller.leavePaused(); root.close() }
             }
             Item { Layout.fillWidth: true }
             BusyIndicator { running: controller.busy; implicitWidth: 28; implicitHeight: 28 }
             Button {
-                text: controller.state === "choosing" ? "Add" : "Next: choose files"
+                text: controller.state === "editing" ? "Retry" : "Add"
                 highlighted: true
-                enabled: controller.state === "editing" || controller.state === "choosing"
+                enabled: (controller.state === "choosing" || controller.state === "editing") && controller.client.connected
                 onClicked: {
+                    controller.directory = directoryField.editText.trim()
                     controller.startRequested = startBox.checked
-                    if (controller.state === "choosing") controller.apply()
-                    else controller.begin(sourceField.text, directoryField.editText, startBox.checked, modeTabs.currentIndex === 0)
+                    if (controller.state === "editing")
+                        controller.begin(controller.source, controller.directory, startBox.checked, controller.localFile)
+                    else controller.apply()
                 }
             }
         }
     }
-
     Connections {
         target: root.controller
-        function onFinished() { root.close() }
-        function onDuplicateFound() { root.close() }
+        function onFinished() { Qt.callLater(root.openNext) }
+        function onDuplicateFound() { Qt.callLater(root.openNext) }
+        function onStateChanged() { if (root.controller.state === "done") root.close() }
     }
 }
