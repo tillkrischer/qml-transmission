@@ -29,6 +29,48 @@ nix-shell --run './build/qml-transmission'
 Launch from `nix-shell` when using the Nix build so Qt uses the expected runtime
 environment and file-dialog integration.
 
+## Declarative Nix installation
+
+`default.nix` builds a wrapped package with a desktop launcher. Use
+`pkgs.callPackage /path/to/qml-transmission/default.nix {}` to instantiate it.
+The installed package runs without entering `nix-shell`.
+
+Add the repository as a non-flake input in your configuration's `flake.nix`:
+
+```nix
+inputs.qml-transmission = {
+  url = "github:tillkrischer/qml-transmission";
+  flake = false;
+};
+```
+
+Pass the input to Home Manager through `extraSpecialArgs` and install it with
+`pkgs.callPackage "${qmlTransmissionSource}/default.nix" {}` in `home.packages`.
+For example, with `inputs` bound in your flake's `outputs` function:
+
+```nix
+extraSpecialArgs = { qmlTransmissionSource = inputs.qml-transmission; };
+```
+
+Your Home Manager module must accept `qmlTransmissionSource` as an argument.
+The configuration in `~/nixos` is set up this way. Apply it with:
+
+```sh
+home-manager switch --flake ~/nixos#till@nixos
+```
+
+After pushing app changes to GitHub, refresh the pinned revision before rebuilding:
+
+```sh
+nix flake update qml-transmission --flake ~/nixos
+home-manager switch --flake ~/nixos#till@nixos
+```
+
+The source revision is pinned in your configuration's `flake.lock`; no local app
+checkout is needed to rebuild.
+
+## Usage
+
 Use **Profiles** to save one or more named servers. Password persistence is
 opt-in and uses the desktop credential store through QtKeychain. A password is
 never placed in the application INI file, and there is no plaintext fallback if
