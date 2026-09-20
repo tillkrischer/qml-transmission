@@ -1,4 +1,4 @@
-#include <QGuiApplication>
+#include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
@@ -13,7 +13,8 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationName(QStringLiteral("QML Transmission"));
     QCoreApplication::setApplicationVersion(QStringLiteral("0.2.0"));
 
-    QGuiApplication app(argc, argv);
+    // KDE's native file dialog uses widgets, even though our UI is Qt Quick.
+    QApplication app(argc, argv);
     CredentialStore credentialStore;
     TorrentFileReader torrentFileReader;
     QQmlApplicationEngine engine;
