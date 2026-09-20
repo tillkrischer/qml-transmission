@@ -103,12 +103,22 @@ Item {
     Flickable {
         id: horizontal
         anchors.fill: parent
+        // Keep scrollbar gutters outside the clipped table viewport.
+        anchors.rightMargin: verticalBar.visible ? verticalBar.implicitWidth : 0
+        anchors.bottomMargin: horizontalBar.visible ? horizontalBar.implicitHeight : 0
         contentWidth: root.tableWidth
         contentHeight: height
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         flickableDirection: Flickable.HorizontalFlick
-        ScrollBar.horizontal: ScrollBar {}
+        ScrollBar.horizontal: ScrollBar {
+            id: horizontalBar
+            parent: root
+            visible: size < 1
+            x: 0
+            y: root.height - height
+            width: horizontal.width
+        }
 
         Rectangle {
             id: header
@@ -178,7 +188,14 @@ Item {
             clip: true
             model: root.store.model
             boundsBehavior: Flickable.StopAtBounds
-            ScrollBar.vertical: ScrollBar {}
+            ScrollBar.vertical: ScrollBar {
+                id: verticalBar
+                parent: root
+                visible: size < 1
+                x: root.width - width
+                y: header.height
+                height: list.height
+            }
 
             delegate: ItemDelegate {
                 id: row
