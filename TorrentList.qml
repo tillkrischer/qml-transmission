@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
 import "js/Format.js" as Format
 
@@ -131,7 +132,10 @@ Item {
                         { title: "ETA", role: "eta", width: 70 },
                         { title: "Added on", role: "added_date", width: 150 }
                     ]
-                    Button {
+                    // Native styles can paint text in the background as well as
+                    // the custom contentItem. Use a single renderer for headers.
+                    Basic.Button {
+                        id: headerButton
                         required property var modelData
                         text: modelData.title + (root.store.sortRole === modelData.role ? (root.store.sortAscending ? "  ▲" : "  ▼") : "")
                         flat: true
@@ -140,8 +144,15 @@ Item {
                         Layout.minimumWidth: modelData.width
                         Layout.preferredWidth: modelData.width
                         Layout.maximumWidth: modelData.width
+                        background: Rectangle {
+                            color: headerButton.down ? headerButton.palette.mid
+                                 : headerButton.hovered ? headerButton.palette.button
+                                 : "transparent"
+                            border.width: headerButton.visualFocus ? 1 : 0
+                            border.color: headerButton.palette.highlight
+                        }
                         contentItem: Label {
-                            text: parent.text
+                            text: headerButton.text
                             horizontalAlignment: Text.AlignLeft
                             verticalAlignment: Text.AlignVCenter
                             elide: Text.ElideRight
