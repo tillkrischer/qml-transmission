@@ -314,6 +314,13 @@ QtObject {
         runMutation(mutationLabel(ids.length, "Torrent stopped", "torrents stopped"),
                     function(done) { client.stopTorrent(ids, done) })
     }
+    function setLocation(hashes, directory, moveData) {
+        var ids = Array.isArray(hashes) ? hashes.slice() : [hashes]
+        directory = String(directory || "").trim()
+        if (!ids.length || !directory) return
+        runMutation("Torrent data location updated",
+                    function(done) { client.setTorrentLocation(ids, directory, done, moveData) })
+    }
     function remove(hashes, deleteLocalData) {
         var ids = Array.isArray(hashes) ? hashes : [hashes]
         var deleting = deleteLocalData === true

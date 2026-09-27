@@ -83,6 +83,9 @@ The client lists, searches, filters by status, download folder, or tracker domai
 and sorts torrents; shows general and file details; edits wanted files and
 Low/Normal/High priority; uploads local `.torrent` files; and adds magnet links.
 Torrent removal can optionally delete downloaded data after explicit confirmation.
+Right-click selected torrents and choose **Set data location…** to change their
+server directory. Keep **Move torrent data** checked to move existing files, or
+uncheck it to use data already at the destination.
 
 Use **Torrent files** to select one or more files. Each torrent gets its own
 dialog for download location and file selection; confirming opens the next one.
