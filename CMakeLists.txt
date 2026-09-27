@@ -24,7 +24,7 @@ qt_add_qml_module(qml-transmission
     QML_FILES
         Main.qml TransmissionClient.qml TorrentStore.qml TorrentList.qml
         TorrentDetails.qml ConnectionDialog.qml ConnectionProfiles.qml
-        AddTorrentDialog.qml AddTorrentController.qml StatusIcon.qml
+        AddTorrentDialog.qml AddTorrentController.qml SetDataLocationDialog.qml StatusIcon.qml
         TorrentFilesStore.qml TorrentFilesView.qml TorrentProgressBar.qml
         js/Format.js js/RpcProtocol.js js/FileTree.js
     RESOURCES

@@ -1,4 +1,3 @@
 # reference
-in terms of features and ui functionality we clone:
+gui flows should match transgui, unless specified otherwise
 https://github.com/transmission-remote-gui/transgui
-although we only support a subset of features

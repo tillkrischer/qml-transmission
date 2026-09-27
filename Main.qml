@@ -293,6 +293,8 @@ ApplicationWindow {
                                 store.start(torrentHashes)
                             else if (action === "stop")
                                 store.stop(torrentHashes)
+                            else if (action === "setLocation")
+                                locationDialog.openForTorrents(torrentHashes)
                             else if (action === "remove") {
                                 window.confirmRemoval(torrentHashes)
                             }
@@ -377,6 +379,12 @@ ApplicationWindow {
         anchors.centerIn: Overlay.overlay
         controller: addController
         profiles: profiles
+    }
+    SetDataLocationDialog {
+        id: locationDialog
+        anchors.centerIn: Overlay.overlay
+        store: store
+        recentDirectories: profiles.activeProfile ? profiles.activeProfile.recentDirectories : []
     }
     Dialog {
         id: removeDialog

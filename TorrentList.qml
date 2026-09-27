@@ -286,6 +286,11 @@ Item {
         }
         MenuSeparator {}
         MenuItem {
+            text: "Set data location…"
+            enabled: contextMenu.targetHashes.length > 0 && root.store.client.connected
+            onTriggered: root.actionRequested("setLocation", contextMenu.targetHashes.slice())
+        }
+        MenuItem {
             text: contextMenu.targetHashes.length > 1 ? "Remove selected…" : "Remove…"
             enabled: contextMenu.targetHashes.length > 0 && root.store.client.connected
             onTriggered: root.actionRequested("remove", contextMenu.targetHashes.slice())
