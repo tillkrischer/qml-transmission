@@ -51,6 +51,11 @@ ApplicationWindow {
     }
     TransmissionClient { id: client }
     TorrentStore { id: store; client: client }
+    FreeSpaceStore {
+        id: freeSpace
+        client: client
+        path: window.selectedTorrent ? window.selectedTorrent.download_dir : client.defaultDownloadDirectory
+    }
     ConnectionProfiles { id: profiles; credentialBackend: credentialStore }
     TorrentFilesStore {
         id: liveFiles
@@ -339,6 +344,14 @@ ApplicationWindow {
                 Layout.fillWidth: true
             }
             Label { text: window.transientMessage || profiles.errorMessage || store.errorMessage || client.errorMessage; color: palette.brightText; elide: Text.ElideRight; Layout.maximumWidth: window.width * 0.45 }
+            Label {
+                text: "Free: " + (freeSpace.sizeBytes < 0 ? "—" : Format.bytes(freeSpace.sizeBytes))
+                      + (freeSpace.sizeBytes >= 0 && freeSpace.stale ? " (stale)" : "")
+                Layout.minimumWidth: implicitWidth
+                HoverHandler { id: freeSpaceHover }
+                ToolTip.visible: freeSpaceHover.hovered
+                ToolTip.text: freeSpace.path + (freeSpace.errorMessage ? "\n" + freeSpace.errorMessage : "")
+            }
             Label { text: "↓ " + Format.speed(store.downloadSpeed) + "   ↑ " + Format.speed(store.uploadSpeed) }
         }
     }

@@ -26,6 +26,7 @@ qt_add_qml_module(qml-transmission
         TorrentDetails.qml ConnectionDialog.qml ConnectionProfiles.qml
         AddTorrentDialog.qml AddTorrentController.qml SetDataLocationDialog.qml StatusIcon.qml
         TorrentFilesStore.qml TorrentFilesView.qml TorrentProgressBar.qml
+        FreeSpaceStore.qml
         js/Format.js js/RpcProtocol.js js/FileTree.js
     RESOURCES
         icons/add.svg icons/start.svg icons/stop.svg icons/remove.svg
