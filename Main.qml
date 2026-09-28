@@ -325,9 +325,14 @@ ApplicationWindow {
         }
     }
 
-    footer: ToolBar {
-        RowLayout {
-            anchors.fill: parent
+    footer: Pane {
+        padding: 6
+        topPadding: 3
+        bottomPadding: 3
+        implicitHeight: Math.max(26, footerRow.implicitHeight + topPadding + bottomPadding)
+        contentItem: RowLayout {
+            id: footerRow
+            spacing: 12
             Label {
                 text: store.stale && store.items.length ? client.connectionState + " · data is stale" : client.connectionState
                 elide: Text.ElideRight
