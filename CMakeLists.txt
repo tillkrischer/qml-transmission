@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(qml-transmission VERSION 0.2.0 LANGUAGES CXX)
+project(qml-transmission VERSION 0.3.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,7 +26,7 @@ qt_add_qml_module(qml-transmission
         TorrentDetails.qml ConnectionDialog.qml ConnectionProfiles.qml
         AddTorrentDialog.qml AddTorrentController.qml SetDataLocationDialog.qml StatusIcon.qml
         TorrentFilesStore.qml TorrentFilesView.qml TorrentProgressBar.qml
-        FreeSpaceStore.qml
+        FreeSpaceStore.qml TorrentPeersStore.qml TorrentPeersView.qml
         js/Format.js js/RpcProtocol.js js/FileTree.js
     RESOURCES
         icons/add.svg icons/start.svg icons/stop.svg icons/remove.svg

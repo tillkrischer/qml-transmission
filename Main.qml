@@ -56,6 +56,12 @@ ApplicationWindow {
         client: client
         path: window.selectedTorrent ? window.selectedTorrent.download_dir : client.defaultDownloadDirectory
     }
+    TorrentPeersStore {
+        id: livePeers
+        client: client
+        torrentHash: window.selectedHash
+        visible: detailTabs.currentIndex === 2
+    }
     ConnectionProfiles { id: profiles; credentialBackend: credentialStore }
     TorrentFilesStore {
         id: liveFiles
@@ -318,12 +324,14 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         TabButton { text: "General" }
                         TabButton { text: "Files" }
+                        TabButton { text: "Peers" }
                     }
                     StackLayout {
                         Layout.fillWidth: true; Layout.fillHeight: true
                         currentIndex: detailTabs.currentIndex
                         TorrentDetails { torrent: window.selectedTorrent }
                         TorrentFilesView { store: liveFiles; detailsMode: true }
+                        TorrentPeersView { store: livePeers }
                     }
                 }
             }

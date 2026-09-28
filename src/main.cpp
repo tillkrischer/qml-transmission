@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationName(QStringLiteral("qml-transmission"));
     QCoreApplication::setOrganizationDomain(QStringLiteral("qml-transmission.local"));
     QCoreApplication::setApplicationName(QStringLiteral("QML Transmission"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.2.0"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("0.3.0"));
 
     // KDE's native file dialog uses widgets, even though our UI is Qt Quick.
     QApplication app(argc, argv);

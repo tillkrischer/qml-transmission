@@ -1,9 +1,8 @@
 # 0.3
 
-less height on bottom bar
-show free space in bottom bar
+- [x] less height on bottom bar
+- [x] show free space in bottom bar
 
-less height for entries in the files view (maybe caused by the expand/collaps icon)
-(in the panel at the botton and in add torrent diag)
+- [x] less height for entries in the files view (in the bottom panel and add-torrent dialog)
 
-peers tab
+- [x] peers tab
