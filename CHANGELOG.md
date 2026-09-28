@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0
+
+- Reduced status-bar height and file-row spacing in both the Files tab and
+  add-torrent dialog, with row heights that accommodate larger fonts.
+- Added remote free space to the status bar for the selected download directory,
+  with periodic refresh, a path tooltip, and unavailable/stale states.
+- Added a sortable Peers tab with address, port, client, progress, transfer speeds,
+  and flags. Polling runs only while visible and preserves scroll position.
+- Protected free-space and peer updates against late replies after selection,
+  connection, and profile changes.
+
 ## 0.2.0
 
 - Added named connection profiles with stable IDs, legacy settings migration,

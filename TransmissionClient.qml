@@ -183,6 +183,14 @@ QtObject {
                     "files", "file_stats", "metadata_percent_complete"] }, false, callback)
     }
 
+    function freeSpace(path, callback) {
+        request("free_space", { path: path }, false, callback)
+    }
+
+    function torrentPeers(hash, callback) {
+        request("torrent_get", { ids: [hash], fields: ["hash_string", "peers"] }, false, callback)
+    }
+
     function setTorrentFiles(hash, wanted, unwanted, priorities, callback) {
         if (!hash) {
             callback(null, makeError("No torrent selected", "validation", false))

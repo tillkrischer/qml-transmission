@@ -102,17 +102,28 @@ Only Transmission's RPC protocol 6.0.0 and newer (Transmission 4.1+) is
 supported. During connection loss, existing rows remain visible as stale data
 and the client reconnects with bounded exponential backoff.
 
+The compact status bar shows free space on the server for the selected torrent's
+download directory, or the server's default download directory when nothing is
+selected. Hover over the value to see the path. Space refreshes every 30 seconds
+and when the directory changes; unavailable values display `—` and disconnected
+values are marked stale.
+
+The **Peers** tab lists the selected torrent's connected peers with sortable
+address, port, client, progress, download/upload speed, and flags columns. It
+refreshes every two seconds while visible and preserves the scroll position
+during updates. Peer speeds are relative to the Transmission server.
+
 ## Checks
 
 ```sh
 nix-shell --run 'cmake -S . -B build -G Ninja -DBUILD_TESTING=ON && cmake --build build'
 nix-shell --run 'ctest --test-dir build --output-on-failure'
 nix-shell --run 'qmltestrunner -input tests -platform offscreen'
-nix-shell --run 'qmllint -I build *.qml tests/*.qml'
+nix-shell --run 'cmake --build build --target qml-transmission_qmllint'
 ```
 
 ## Current limitations
 
 Only one saved server is active at a time. Simultaneous server tabs, peer/tracker
-editing, queue management, remote directory browsing,
-batch torrent selection, and tray integration are outside version 0.2.
+editing, peer hostname/country lookup, queue management, remote directory browsing,
+and tray integration are outside version 0.3.

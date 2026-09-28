@@ -51,6 +51,17 @@ ApplicationWindow {
     }
     TransmissionClient { id: client }
     TorrentStore { id: store; client: client }
+    FreeSpaceStore {
+        id: freeSpace
+        client: client
+        path: window.selectedTorrent ? window.selectedTorrent.download_dir : client.defaultDownloadDirectory
+    }
+    TorrentPeersStore {
+        id: livePeers
+        client: client
+        torrentHash: window.selectedHash
+        visible: detailTabs.currentIndex === 2
+    }
     ConnectionProfiles { id: profiles; credentialBackend: credentialStore }
     TorrentFilesStore {
         id: liveFiles
@@ -313,27 +324,42 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         TabButton { text: "General" }
                         TabButton { text: "Files" }
+                        TabButton { text: "Peers" }
                     }
                     StackLayout {
                         Layout.fillWidth: true; Layout.fillHeight: true
                         currentIndex: detailTabs.currentIndex
                         TorrentDetails { torrent: window.selectedTorrent }
                         TorrentFilesView { store: liveFiles; detailsMode: true }
+                        TorrentPeersView { store: livePeers }
                     }
                 }
             }
         }
     }
 
-    footer: ToolBar {
-        RowLayout {
-            anchors.fill: parent
+    footer: Pane {
+        padding: 6
+        topPadding: 3
+        bottomPadding: 3
+        implicitHeight: Math.max(26, footerRow.implicitHeight + topPadding + bottomPadding)
+        contentItem: RowLayout {
+            id: footerRow
+            spacing: 12
             Label {
                 text: store.stale && store.items.length ? client.connectionState + " · data is stale" : client.connectionState
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
             Label { text: window.transientMessage || profiles.errorMessage || store.errorMessage || client.errorMessage; color: palette.brightText; elide: Text.ElideRight; Layout.maximumWidth: window.width * 0.45 }
+            Label {
+                text: "Free: " + (freeSpace.sizeBytes < 0 ? "—" : Format.bytes(freeSpace.sizeBytes))
+                      + (freeSpace.sizeBytes >= 0 && freeSpace.stale ? " (stale)" : "")
+                Layout.minimumWidth: implicitWidth
+                HoverHandler { id: freeSpaceHover }
+                ToolTip.visible: freeSpaceHover.hovered
+                ToolTip.text: freeSpace.path + (freeSpace.errorMessage ? "\n" + freeSpace.errorMessage : "")
+            }
             Label { text: "↓ " + Format.speed(store.downloadSpeed) + "   ↑ " + Format.speed(store.uploadSpeed) }
         }
     }

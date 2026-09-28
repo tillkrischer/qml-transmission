@@ -12,10 +12,14 @@ Item {
     property var selectedKeys: []
     property string selectionAnchorKey: ""
     readonly property real columnSpacing: 8
-    readonly property real wantedColumnWidth: 64
+    readonly property real wantedColumnWidth: Math.max(64, fileFont.advanceWidth("Wanted") + 8)
     readonly property real progressColumnWidth: 140
     readonly property real sizeColumnWidth: 100
     readonly property real priorityColumnWidth: 120
+    readonly property real rowHeight: Math.max(28, fileFont.height + 8)
+
+    FontMetrics { id: fileFont; font: fileFontLabel.font }
+    Label { id: fileFontLabel; visible: false }
 
     function containsKey(keys, key) {
         return keys.indexOf(key) >= 0
@@ -148,7 +152,7 @@ Item {
         }
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 28
+            Layout.preferredHeight: Math.max(28, fileFont.height + 6)
             color: palette.alternateBase
             Label {
                 anchors.left: parent.left
@@ -210,7 +214,7 @@ Item {
                 required property int index
                 required property var modelData
                 width: list.width
-                height: 40
+                height: root.rowHeight
                 padding: 0
                 enabled: !root.store.busy
                 focusPolicy: Qt.NoFocus
@@ -242,6 +246,8 @@ Item {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         width: root.wantedColumnWidth
+                        height: row.height
+                        padding: 0
                         tristate: row.modelData.folder
                         enabled: !root.detailsMode
                         checkState: row.modelData.wanted === 2 ? Qt.PartiallyChecked : (row.modelData.wanted ? Qt.Checked : Qt.Unchecked)
@@ -268,13 +274,14 @@ Item {
                             focusPolicy: Qt.NoFocus
                             x: row.modelData.depth * 16
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 36
-                            height: 36
+                            width: 24
+                            height: row.height
+                            padding: 0
                             text: row.modelData.expanded ? "▾" : "▸"
                             onClicked: root.store.toggleExpanded(row.modelData.key)
                         }
                         Label {
-                            x: row.modelData.depth * 16 + 36
+                            x: row.modelData.depth * 16 + 24
                             width: Math.max(0, parent.width - x)
                             height: parent.height
                             text: row.modelData.name
