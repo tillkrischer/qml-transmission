@@ -61,6 +61,8 @@ Dialog {
             Layout.fillWidth: true
             editable: true
             model: root.recentDirectories
+            // The editable path may differ even when the selected index is unchanged.
+            onActivated: function(index) { editText = textAt(index) }
         }
         CheckBox {
             id: moveData

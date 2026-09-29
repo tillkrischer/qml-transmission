@@ -49,9 +49,12 @@ Dialog {
         Label { text: "Download directory on the server" }
         ComboBox {
             id: directoryField
+            objectName: "addTorrentDirectory"
             Layout.fillWidth: true; editable: true
             enabled: !controller.busy
             model: profiles.activeProfile ? profiles.activeProfile.recentDirectories : []
+            // The editable path may differ even when the selected index is unchanged.
+            onActivated: function(index) { editText = textAt(index) }
         }
         CheckBox { id: startBox; text: "Start when ready"; checked: true; enabled: !controller.busy }
         Label {
