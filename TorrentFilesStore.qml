@@ -14,6 +14,8 @@ QtObject {
     property var files: []
     property var stats: []
     property var rows: []
+    property alias model: fileModel
+    property ListModel internalModel: ListModel { id: fileModel; dynamicRoles: true }
     property var expanded: ({})
     property int requestEpoch: 0
     readonly property int selectedCount: stats.filter(function(s) { return s.wanted }).length
@@ -39,6 +41,7 @@ QtObject {
         files = []
         stats = []
         rows = []
+        fileModel.clear()
         errorMessage = ""
         metadataPercent = 0
         if (torrentHash && visible && !draftMode) refresh(true)
@@ -81,7 +84,7 @@ QtObject {
             var torrent = torrents[0]
             metadataPercent = Number(torrent.metadata_percent_complete) || 0
             if (metadataPercent < 1 && (!torrent.files || !torrent.files.length)) {
-                files = []; stats = []; rows = []; errorMessage = "Metadata is not available yet"
+                files = []; stats = []; rebuild(); errorMessage = "Metadata is not available yet"
                 loaded(); return
             }
             files = torrent.files || []
@@ -94,6 +97,19 @@ QtObject {
 
     function rebuild() {
         rows = FileTree.flatten(FileTree.build(files, stats), expanded)
+        for (var i = 0; i < rows.length; ++i) {
+            var existing = -1
+            for (var j = i; j < fileModel.count; ++j) {
+                if (fileModel.get(j).rowData.key === rows[i].key) { existing = j; break }
+            }
+            if (existing < 0) fileModel.insert(i, { rowData: rows[i] })
+            else {
+                if (existing !== i) fileModel.move(existing, i, 1)
+                fileModel.setProperty(i, "rowData", rows[i])
+            }
+        }
+        if (fileModel.count > rows.length)
+            fileModel.remove(rows.length, fileModel.count - rows.length)
         changed()
     }
 

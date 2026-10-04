@@ -204,22 +204,23 @@ Item {
         }
         ListView {
             id: list
+            objectName: "fileList"
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            model: root.store.rows
+            model: root.store.model
             ScrollBar.vertical: ScrollBar {}
             delegate: ItemDelegate {
                 id: row
                 required property int index
-                required property var modelData
+                required property var rowData
                 width: list.width
                 height: root.rowHeight
                 padding: 0
                 enabled: !root.store.busy
                 focusPolicy: Qt.NoFocus
                 hoverEnabled: false
-                highlighted: root.detailsMode && root.containsKey(root.selectedKeys, String(row.modelData.key))
+                highlighted: root.detailsMode && root.containsKey(root.selectedKeys, String(row.rowData.key))
 
                 MouseArea {
                     anchors.fill: parent
@@ -248,17 +249,17 @@ Item {
                         width: root.wantedColumnWidth
                         height: row.height
                         padding: 0
-                        tristate: row.modelData.folder
+                        tristate: row.rowData.folder
                         enabled: !root.detailsMode
-                        checkState: row.modelData.wanted === 2 ? Qt.PartiallyChecked : (row.modelData.wanted ? Qt.Checked : Qt.Unchecked)
-                        onClicked: root.store.setWanted(row.modelData, checkState === Qt.Checked)
+                        checkState: row.rowData.wanted === 2 ? Qt.PartiallyChecked : (row.rowData.wanted ? Qt.Checked : Qt.Unchecked)
+                        onClicked: root.store.setWanted(row.rowData, checkState === Qt.Checked)
                     }
                     Label {
                         visible: root.detailsMode
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         width: root.wantedColumnWidth
-                        text: row.modelData.wanted === 2 ? "–" : (row.modelData.wanted ? "✓" : "")
+                        text: row.rowData.wanted === 2 ? "–" : (row.rowData.wanted ? "✓" : "")
                         horizontalAlignment: Text.AlignHCenter
                     }
                     Item {
@@ -270,24 +271,24 @@ Item {
                         height: parent.height
                         ToolButton {
                             id: expandButton
-                            visible: row.modelData.folder
+                            visible: row.rowData.folder
                             focusPolicy: Qt.NoFocus
-                            x: row.modelData.depth * 16
+                            x: row.rowData.depth * 16
                             anchors.verticalCenter: parent.verticalCenter
                             width: 24
                             height: row.height
                             padding: 0
-                            text: row.modelData.expanded ? "▾" : "▸"
-                            onClicked: root.store.toggleExpanded(row.modelData.key)
+                            text: row.rowData.expanded ? "▾" : "▸"
+                            onClicked: root.store.toggleExpanded(row.rowData.key)
                         }
                         Label {
-                            x: row.modelData.depth * 16 + 24
+                            x: row.rowData.depth * 16 + 24
                             width: Math.max(0, parent.width - x)
                             height: parent.height
-                            text: row.modelData.name
+                            text: row.rowData.name
                             elide: Text.ElideMiddle
                             verticalAlignment: Text.AlignVCenter
-                            font.bold: row.modelData.folder
+                            font.bold: row.rowData.folder
                         }
                     }
                     Item {
@@ -301,7 +302,7 @@ Item {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            value: row.modelData.size ? row.modelData.completed / row.modelData.size : 0
+                            value: row.rowData.size ? row.rowData.completed / row.rowData.size : 0
                         }
                     }
                     Label {
@@ -310,7 +311,7 @@ Item {
                         anchors.rightMargin: root.detailsMode ? root.columnSpacing : 0
                         width: root.sizeColumnWidth
                         height: parent.height
-                        text: Format.bytes(row.modelData.size)
+                        text: Format.bytes(row.rowData.size)
                         horizontalAlignment: Text.AlignRight
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -324,8 +325,8 @@ Item {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             width: 14
-                            text: root.priorityIcon(row.modelData)
-                            color: root.priorityColor(row.modelData)
+                            text: root.priorityIcon(row.rowData)
+                            color: root.priorityColor(row.rowData)
                             horizontalAlignment: Text.AlignHCenter
                         }
                         Label {
@@ -333,7 +334,7 @@ Item {
                             anchors.leftMargin: 20
                             anchors.right: parent.right
                             height: parent.height
-                            text: root.priorityText(row.modelData)
+                            text: root.priorityText(row.rowData)
                             elide: Text.ElideRight
                             verticalAlignment: Text.AlignVCenter
                         }
