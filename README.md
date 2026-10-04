@@ -89,6 +89,8 @@ uncheck it to use data already at the destination.
 
 Use **Torrent files** to select one or more files. Each torrent gets its own
 dialog for download location and file selection; confirming opens the next one.
+The dialog preselects the last download location used for that connection,
+including after restarting the application.
 Use **Magnet link** to paste a link, then confirm to open the same options dialog.
 Torrents are prepared paused so choices can be applied before starting.
 Draft cleanup always preserves downloaded data. Download paths refer to the daemon host, not the computer running this

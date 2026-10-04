@@ -10,7 +10,7 @@ TestCase {
         property bool duplicate: false
         property bool noMetadata: false
         function addTorrent(source, directory, paused, metainfo, callback) {
-            calls.push({ kind: "add", source: source, paused: paused, metainfo: metainfo })
+            calls.push({ kind: "add", source: source, directory: directory, paused: paused, metainfo: metainfo })
             callback(duplicate ? { torrent_duplicate: { hash_string: "existing" } }
                                : { torrent_added: { hash_string: source, name: source } }, null)
         }
@@ -43,6 +43,11 @@ TestCase {
     function init() {
         controller.reset(); controller.clearRecovery()
         client.connected = true; client.calls = []; client.duplicate = false; client.noMetadata = false
+        profiles.profiles = [profiles.normalizedProfile({ id: "first", defaultDirectory: "/default" }),
+                             profiles.normalizedProfile({ id: "second", defaultDirectory: "/other-default" })]
+        profiles.activeProfileId = "first"
+        client.profileId = "first"
+        client.defaultDownloadDirectory = "/server-default"
     }
     function cleanup() { dialog.pendingSources = []; dialog.close(); controller.clearRecovery() }
     function test_filesArePreparedOneAtATime() {
@@ -59,10 +64,41 @@ TestCase {
         tryCompare(controller, "source", "two")
         compare(controller.state, "choosing")
         compare(files.selectedCount, 2)
+        compare(controller.directory, "/first")
+        compare(findChild(dialog, "addTorrentDirectory").editText, "/first")
+        compare(client.calls[4].directory, "/first")
         controller.directory = "/second"
         controller.apply()
         compare(client.calls[5].directory, "/second")
         compare(client.calls[6].wanted, [0, 1])
+    }
+    function test_rememberedDirectoryIsPersistentAndPerConnection() {
+        controller.begin("one", "/remembered", false, true)
+        controller.apply()
+        compare(controller.state, "done")
+        profiles.initialize()
+        compare(profiles.activeProfile.recentDirectories[0], "/remembered")
+
+        profiles.select("second")
+        client.profileId = "second"
+        dialog.openSources(["two"], true)
+        compare(controller.directory, "/other-default")
+        controller.directory = "/other-remembered"
+        controller.apply()
+        wait(1)
+
+        profiles.select("first")
+        client.profileId = "first"
+        dialog.openSources(["three"], true)
+        compare(controller.directory, "/remembered")
+        compare(findChild(dialog, "addTorrentDirectory").editText, "/remembered")
+        compare(profiles.profile("second").recentDirectories[0], "/other-remembered")
+    }
+    function test_directoryFallsBackToServerDefault() {
+        profiles.profiles = [profiles.normalizedProfile({ id: "first" })]
+        dialog.openSources(["one"], true)
+        compare(controller.directory, "/server-default")
+        compare(findChild(dialog, "addTorrentDirectory").editText, "/server-default")
     }
     function test_magnetUsesOptionsBeforeStarting() {
         client.noMetadata = true

@@ -37,8 +37,10 @@ Dialog {
         pendingSources = pendingSources.slice(1)
         controller.reset()
         var profile = profiles.activeProfile
-        directoryField.editText = profile && profile.defaultDirectory
-                ? profile.defaultDirectory : controller.client.defaultDownloadDirectory
+        directoryField.editText = profile && profile.recentDirectories.length
+                ? profile.recentDirectories[0]
+                : profile && profile.defaultDirectory
+                  ? profile.defaultDirectory : controller.client.defaultDownloadDirectory
         startBox.checked = true
         open()
         controller.begin(source, directoryField.editText, true, localSources)
