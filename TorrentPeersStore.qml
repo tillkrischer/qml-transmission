@@ -100,15 +100,9 @@ QtObject {
             var order = typeof left === "number" ? left - right : String(left).localeCompare(String(right))
             return order ? order * direction : a.key.localeCompare(b.key)
         })
-        // Reconcile in place so regular polls do not reset the list's scroll position.
         for (var i = 0; i < sorted.length; ++i) {
-            var existing = -1
-            for (var j = i; j < peerModel.count; ++j) {
-                if (peerModel.get(j).key === sorted[i].key) { existing = j; break }
-            }
-            if (existing < 0) peerModel.insert(i, sorted[i])
-            else if (existing !== i) peerModel.move(existing, i, 1)
-            peerModel.set(i, sorted[i])
+            if (i < peerModel.count) peerModel.set(i, sorted[i])
+            else peerModel.append(sorted[i])
         }
         if (peerModel.count > sorted.length)
             peerModel.remove(sorted.length, peerModel.count - sorted.length)

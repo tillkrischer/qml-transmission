@@ -216,4 +216,50 @@ TestCase {
         compare(list.contentY, before)
         compare(peers.model.get(0).rate_to_client, 1000)
     }
+    function test_peerScrollPositionSurvivesReordering() {
+        peers.sortRole = "rate_to_client"
+        showPeers()
+        var values = []
+        for (var index = 0; index < 100; ++index)
+            values.push(peer("peer" + index, index, index))
+        replyPeers(client.calls[0], values)
+        var list = findChild(view, "peerList")
+        tryCompare(list, "count", 100)
+        list.positionViewAtIndex(50, ListView.Beginning)
+        wait(50)
+        var before = list.contentY - list.originY
+        verify(before > 0)
+        peers.refresh()
+        values[0].rate_to_client = 1000
+        replyPeers(client.calls[1], values)
+        wait(50)
+        compare(list.contentY - list.originY, before)
+        compare(peers.model.get(99).rate_to_client, 1000)
+    }
+    function test_peerScrollPositionSurvivesChurn_data() {
+        return [{ tag: "join and leave", count: 100 },
+                { tag: "fewer peers", count: 80 }]
+    }
+    function test_peerScrollPositionSurvivesChurn(data) {
+        showPeers()
+        var values = []
+        for (var index = 0; index < 100; ++index)
+            values.push(peer("peer" + index, index, index))
+        replyPeers(client.calls[0], values)
+        var list = findChild(view, "peerList")
+        tryCompare(list, "count", 100)
+        list.positionViewAtIndex(50, ListView.Beginning)
+        wait(50)
+        var before = list.contentY - list.originY
+        verify(before > 0)
+        values = values.slice(20)
+        for (var added = values.length; added < data.count; ++added)
+            values.push(peer("new" + added, added, added))
+        peers.refresh()
+        replyPeers(client.calls[1], values)
+        tryCompare(list, "count", data.count)
+        wait(50)
+        compare(list.contentY - list.originY, before)
+        verify(peers.model.get(0).address !== "peer0")
+    }
 }

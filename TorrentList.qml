@@ -182,6 +182,7 @@ Item {
 
         ListView {
             id: list
+            objectName: "torrentList"
             y: header.height
             width: root.tableWidth
             height: horizontal.height - header.height

@@ -111,7 +111,10 @@ values are marked stale.
 The **Peers** tab lists the selected torrent's connected peers with sortable
 address, port, client, progress, download/upload speed, and flags columns. It
 refreshes every two seconds while visible and preserves the scroll position
-during updates. Peer speeds are relative to the Transmission server.
+during updates, including when peers join, leave, or change sort order. The main
+torrent list also keeps its scroll position when live sorting changes the order.
+If a list becomes too short, scrolling is limited to its new end. Peer speeds are
+relative to the Transmission server.
 
 ## Checks
 
